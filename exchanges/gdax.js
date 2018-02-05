@@ -21,6 +21,9 @@ var Trader = function(config) {
   this.asset = config.asset;
   this.currency = config.currency;
 
+  this.api_url = 'https://api.gdax.com';
+  this.api_sandbox_url = 'https://api-public.sandbox.gdax.com';
+
   if (_.isObject(config)) {
     this.key = config.key;
     this.secret = config.secret;
@@ -29,17 +32,22 @@ var Trader = function(config) {
     this.pair = [config.asset, config.currency].join('-').toUpperCase();
     this.post_only =
       typeof config.post_only !== 'undefined' ? config.post_only : true;
+    
+    if (config.sandbox) {
+      this.use_sandbox = config.sandbox;
+    }
+
   }
 
   this.gdax_public = new Gdax.PublicClient(
     this.pair,
-    this.use_sandbox ? 'https://api-public.sandbox.gdax.com' : undefined
+    this.use_sandbox ? this.api_sandbox_url : undefined
   );
   this.gdax = new Gdax.AuthenticatedClient(
     this.key,
     this.secret,
     this.passphrase,
-    this.use_sandbox ? 'https://api-public.sandbox.gdax.com' : undefined
+    this.use_sandbox ? this.api_sandbox_url : undefined
   );
 };
 
@@ -73,7 +81,7 @@ Trader.prototype.processError = function(funcName, error) {
     );
     return new Errors.AbortError('[gdax.js] ' + error.message);
   }
-
+ 
   log.debug(
     `[gdax.js] (${funcName}) returned an error, retrying: ${error.message}`
   );
@@ -145,7 +153,8 @@ Trader.prototype.buy = function(amount, price, callback) {
     callback(undefined, data.id);
   };
 
-  let handler = cb => this.gdax.buy(buyParams, this.handleResponse('buy', cb));
+  let handler = cb =>
+    this.gdax.buy(buyParams, this.handleResponse('buy', cb));
   util.retryCustom(retryCritical, _.bind(handler, this), _.bind(result, this));
 };
 
@@ -163,7 +172,7 @@ Trader.prototype.sell = function(amount, price, callback) {
   };
 
   let handler = cb =>
-    this.gdax.sell(sellParams, this.handleResponse('buy', cb));
+    this.gdax.sell(sellParams, this.handleResponse('sell', cb));
   util.retryCustom(retryCritical, _.bind(handler, this), _.bind(result, this));
 };
 
@@ -204,9 +213,14 @@ Trader.prototype.getOrder = function(order, callback) {
 };
 
 Trader.prototype.cancelOrder = function(order, callback) {
+  // callback for cancelOrder should be true if the order was already filled, otherwise false
   var result = function(err, data) {
-    // todo, verify result..
-    callback();
+    if(err) {
+      log.error('Error cancelling order:', err);
+      return callback(true);  // need to catch the specific error but usually an error on cancel means it was filled
+    }
+
+    return callback(false);
   };
 
   let handler = cb =>
@@ -377,7 +391,7 @@ Trader.getCapabilities = function() {
     providesFullHistory: true,
     tid: 'tid',
     tradable: true,
-    forceReorderDelay: true,
+    forceReorderDelay: false
   };
 };
 

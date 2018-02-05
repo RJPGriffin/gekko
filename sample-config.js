@@ -33,17 +33,15 @@ config.watch = {
 config.tradingAdvisor = {
   enabled: true,
   method: 'MACD',
-  candleSize: 1,
-  historySize: 3,
-  adapter: 'sqlite'
+  candleSize: 60,
+  historySize: 10,
 }
 
 // Exponential Moving Averages settings:
 config.DEMA = {
   // EMA weight (α)
   // the higher the weight, the more smooth (and delayed) the line
-  short: 10,
-  long: 21,
+  weight: 21,
   // amount of candles to remember and base initial EMAs on
   // the difference between the EMAs (to act as triggers)
   thresholds: {
