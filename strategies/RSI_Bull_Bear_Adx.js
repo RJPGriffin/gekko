@@ -24,6 +24,13 @@ var strat = {
 
     // debug? set to flase to disable all logging/messages/stats (improves performance)
     this.debug = false;
+    config.backtest.batchSize = 2000 //reduce db reads
+
+    //GA Settings CHECK
+    log.debug('SMA Long: ' + this.settings.SMA_long);
+    log.debug('SMA Short: ' + this.settings.SMA_short);
+    log.debug('Bull RSI: ' + this.settings.BULL_RSI);
+    log.debug('Bear RSI: ' + this.settings.BEAR_RSI);
 
     // performance
     config.backtest.batchSize = 1000; // increase performance

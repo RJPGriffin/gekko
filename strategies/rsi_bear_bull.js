@@ -17,11 +17,19 @@ var strat = {
   /* INIT */
   init: function() {
     this.name = 'RSI Bull and Bear';
-    this.requiredHistory = config.tradingAdvisor.historySize;
+    this.requiredHistory = this.settings.SMA_long;
     this.resetTrend();
 
     // debug? set to flase to disable all logging (improves performance)
     this.debug = true;
+
+    //GA Settings CHECK
+    log.debug('SMA Long: ' + this.settings.SMA_long);
+    log.debug('SMA Short: ' + this.settings.SMA_short);
+    log.debug('Bull RSI: ' + this.settings.BULL_RSI);
+    log.debug('Bear RSI: ' + this.settings.BEAR_RSI);
+    // log.debug('Candle Size (maybe): ' + this.candle.close.length);
+
 
     // add indicators
     this.addTulipIndicator('maSlow', 'sma', {
@@ -138,6 +146,7 @@ var strat = {
       this.resetTrend();
       this.trend.direction = 'down';
       this.advice('short');
+      config.tradingAdvisor.historySize;
     }
 
     if (this.debug) {

@@ -48,6 +48,7 @@
     "node.bittrex.api": "^0.4.3",
     "okcoin-china": "0.0.7",
     "opn": "^4.0.2",
+    "pm2": "^2.9.3",
     "poloniex.js": "0.0.7",
     "promisify-node": "^0.4.0",
     "prompt-lite": "0.1.1",

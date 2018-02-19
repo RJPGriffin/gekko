@@ -37,6 +37,7 @@ dwsync.xml
 
 # Folders & files to ignore
 
+private
 node_modules
 candles.csv
 cexio.db
