@@ -1,0 +1,10 @@
+# ATR period
+ATR= 22
+
+#ADX period
+ADX= 22
+
+# ATR Threshold
+ATR_threshold= 30
+ATR_Multiplier_low= 1.5
+ATR_Multiplier_high= 3
