@@ -10,7 +10,7 @@
 var log = require('../core/log.js');
 var config = require('../core/util.js').getConfig();
 var _ = require('lodash');
-
+var fs = require('fs');
 
 // strategy
 var strat = {
@@ -23,11 +23,13 @@ var strat = {
 
     // debug? set to false to disable all logging/messages/stats (improves performance in backtests)
     this.debug = false;
+    this.writeToFile = false;
 
     // performance
     config.backtest.batchSize = 1000; // increase performance
     config.silent = true;
     config.debug = false;
+
 
     // Heiken Ashi candle
     this.HACandle;
@@ -63,7 +65,7 @@ var strat = {
     //Variables
     this.trend = 'none';
     this.newTrend = false;
-    this.stop;
+    this.stop = 0;
 
 
 
@@ -248,6 +250,23 @@ var strat = {
       log.info('Current Stop: ' + this.stop);
       log.info('Current Price: ' + price);
       log.info('\n\n');
+    }
+
+    if (this.writeToFile) {
+      log.info('Writing ' + price.toFixed(2) + "," + this.stop.toFixed(2));
+
+      fs.appendFile('ResultsLog/results ' + this.startTime + '.csv', price + "," + this.stop + "\n", function(err) {
+        if (err) {
+          return console.log(err);
+        }
+      });
+
+
+      // fs.writeFile(this.fileName, price.toFixed(2) + "," + this.stop.toFixed(2) + "\n\r", function(err) {
+      //   if (err) {
+      //     return console.log(err);
+      //   }
+      // });
     }
 
 
