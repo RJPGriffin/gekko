@@ -42,7 +42,7 @@
     "koa-static": "^2.0.0",
     "kraken-api-es5": "^1.0.0",
     "lakebtc_nodejs": "0.1.x",
-    "lodash": "2.x",
+    "lodash": "^2.4.2",
     "moment": "^2.20.1",
     "node-telegram-bot-api": "^0.30.0",
     "node-wex": "^1.0.3",
