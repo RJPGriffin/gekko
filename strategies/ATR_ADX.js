@@ -23,7 +23,7 @@ var strat = {
 
     // debug? set to false to disable all logging/messages/stats (improves performance in backtests)
     this.debug = false;
-    this.writeToFile = false;
+    this.writeToFile = true;
 
     // performance
     config.backtest.batchSize = 1000; // increase performance
@@ -33,6 +33,7 @@ var strat = {
 
     // Heiken Ashi candle
     this.HACandle;
+    false
     this.previousCandle = { //Initialise previousCandle with 0
       "open": 0,
       "close": 0,
@@ -199,37 +200,46 @@ var strat = {
       this.resetMinMax(this.HACandle);
     }
 
-    //Check for long
-    if (this.trend === 'bull') {
-      //Calculate new stop target
+    if (adx !== undefined) {
+      //Check for long
+      if (this.trend === 'bull') {
+        //Calculate new stop target
 
-      //Bull trend so stop needs to be below the trendline.
-      let newStop = this.periodMax - (atr * this.getBullMultiplier(adx))
+        //Bull trend so stop needs to be below the trendline.
+        let newStop = this.periodMax - (atr * this.getBullMultiplier(adx))
 
-      // Stop can only increase, therefore only use the new stop if it is higher than current stop
-      // If trend is new, bull stop will never be higher than bear stop, therefore use it anyway.
-      if (newStop > this.stop || this.newTrend) {
-        this.stop = newStop;
-        this.newTrend = false;
-      }
+        // Stop can only increase, therefore only use the new stop if it is higher than current stop
+        // If trend is new, bull stop will never be higher than bear stop, therefore use it anyway.
+        if (newStop > this.stop) {
+          this.stop = newStop;
+        }
+        if (this.newTrend) {
+          this.stop = this.periodMax - atr;
+          this.newTrend = false;
+        }
+        //If candle close price has passed the latest stop, change advice to short
+        if (price <= this.stop) {
+          this.short();
+        }
 
-      //If candle close price has passed the latest stop, change advice to short
-      if (price <= this.stop) {
-        this.short();
-      }
 
+      } else if (this.trend === 'bear') {
+        //Calculate new stop target
+        let newStop = this.periodMin + (atr * this.getBearMultiplier(adx))
 
-    } else if (this.trend === 'bear') {
-      //Calculate new stop target
-      let newStop = this.periodMin + (atr * this.getBearMultiplier(adx))
+        if (newStop < this.stop) {
+          this.stop = newStop;
+        }
 
-      if (newStop < this.stop || this.newTrend) {
-        this.stop = newStop;
-        this.newTrend = false;
-      }
-      //check if price has hit target
-      if (price >= this.stop) {
-        this.long();
+        if (this.newTrend) {
+          this.stop = this.periodMin + atr;
+          this.newTrend = false;
+        }
+
+        //check if price has hit target
+        if (price >= this.stop) {
+          this.long();
+        }
       }
     }
 
