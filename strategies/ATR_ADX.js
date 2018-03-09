@@ -23,7 +23,7 @@ var strat = {
 
     // debug? set to false to disable all logging/messages/stats (improves performance in backtests)
     this.debug = false;
-    this.writeToFile = true;
+    this.writeToFile = false;
 
     // performance
     config.backtest.batchSize = 1000; // increase performance
@@ -181,7 +181,8 @@ var strat = {
   update: function(candle) {
     // this.updateMinMax(candle);
     this.HACandle = this.heikenAshi(candle);
-    this.updateMinMaxAverage(this.HACandle);
+    this.updateMinMax(this.HACandle);
+    // this.updateMinMaxAverage(this.HACandle);
     this.previousCandle = candle; //for HA calculation
   },
 
@@ -214,7 +215,8 @@ var strat = {
           this.stop = newStop;
         }
         if (this.newTrend) {
-          this.stop = this.periodMax - atr;
+          // this.stop = this.periodMin;
+          this.stop = newStop;
           this.newTrend = false;
         }
         //If candle close price has passed the latest stop, change advice to short
@@ -232,7 +234,8 @@ var strat = {
         }
 
         if (this.newTrend) {
-          this.stop = this.periodMin + atr;
+          // this.stop = this.periodMax;
+          this.stop = newStop;
           this.newTrend = false;
         }
 
@@ -265,7 +268,7 @@ var strat = {
     if (this.writeToFile) {
       log.info('Writing ' + price.toFixed(2) + "," + this.stop.toFixed(2));
 
-      fs.appendFile('ResultsLog/results ' + this.startTime + '.csv', price + "," + this.stop + "\n", function(err) {
+      fs.appendFile('ResultsLog/results ' + this.startTime + '.csv', price + "," + this.stop + "," + this.periodMin + "," + this.periodMax + "\n", function(err) {
         if (err) {
           return console.log(err);
         }
