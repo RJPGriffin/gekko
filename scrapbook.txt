@@ -1,0 +1,79 @@
+// Adding dimensions to the covnet data
+
+here is how to add the array - my version is old so the line numbers might be off a bit
+on line 8 you need to add a variable for the depth of the regression
+
+ var d =5
+
+then around line 28 change the input layer to
+
+{type:'input', out_sx:1, out_sy:1, out_depth: d},
+
+make the modification to the array around line 58
+
+for (let i = 0; i < this.priceBuffer.length - d; i++) {
+    let data = this.priceBuffer[i];
+    let current_price = this.priceBuffer[i + d];
+    let vol = new convnetjs.Vol(data);
+    this.trainer.train(vol, current_price);
+    let predicted_values = this.nn.forward(vol);
+    let accuracymatch = predicted_values.w[0] === current_price.first;
+    this.nn.backward(accuracymatch);
+    this.predictionCount++;
+
+the line 73, add the values to the array and then have the code store the array and send that to the learn function
+
+this.candle = candle;
+  this.priceBuffer.push([
+
+    (candle.low / this.settings.scale),
+    (candle.high / this.settings.scale),
+    (candle.close / this.settings.scale),
+    (candle.open / this.settings.scale),
+    (candle.volume / 1000)
+  ]);
+
+if ((d*2) > this.priceBuffer.length) return;
+
+  for (let i=0;i<(d*3);++i) this.learn();
+
+  while (this.settings.price_buffer_len < this.priceBuffer.length) this.priceBuffer.shift();
+  },
+
+that'll add open, high ,low, close and volume
+----------------------------------
+remember, however, this is still a regression with values in the last depth
+the first two depths are not used - convnet's are good with pictures
+so maybe build a multi dimensional array
+
+__________________________________________________________________________________________________________
+// Saving and restoring neural nets
+
+add the to the end of your neural file courtesy of eqqy
+
+end : function() {
+  log.debug('end()');
+    log.debug('attempting to save NN training');
+    const filename = 'gdax-BTC-USD';
+    fs.writeFile("./history/"+filename+'.json', JSON.stringify(this.nn.toJSON()), function(err) {
+      if (err) return console.log(err);
+      console.log("The file was saved!");
+    });
+  }
+}
+
+(edited)
+add this to your init
+
+ log.debug('attempting to load NN training');
+    const filename = 'gdax-BTC-USD';
+    this.net1 = JSON.parse(fs.readFileSync("./nn/"+filename+'.json'));
+    this.nn = new convnetjs.Net();
+
+    this.nn.fromJSON(this.net1);
+   log.debug('Nework Loaded Using Trained Model')
+  };
+
+modify the code to fit your exchange and directory structure
+
+__________________________________________________________________________________________________________
