@@ -68,6 +68,12 @@ var strategy = {
       l2_decay: this.settings.decay
     });
 
+    // this.trainer = new convnetjs.Trainer(this.nn, {
+    //   method: 'adadelta',
+    //   l2_decay: 0.001,
+    //   batch_size: this.batchSize
+    // });
+
     this.addIndicator('stoploss', 'StopLoss', {
       threshold: this.settings.stoploss_threshold
     });

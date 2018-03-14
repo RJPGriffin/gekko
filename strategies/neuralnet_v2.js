@@ -80,7 +80,7 @@ var strategy = {
   learn: function() {
     for (let i = 0; i < this.priceBuffer.length - d; i++) {
       let data = this.priceBuffer[i];
-      let current_price = this.priceBuffer[i + d];
+      let current_price = this.priceBuffer[i + 1];
       let vol = new convnetjs.Vol(data);
       this.trainer.train(vol, current_price);
       let predicted_values = this.nn.forward(vol);
@@ -97,26 +97,33 @@ var strategy = {
 
   update: function(candle) {
     // play with the candle values to finetune this
-    this.SMMA.update((candle.high + candle.close + candle.low + candle.vwp) / 4);
-    let smmaFast = this.SMMA.result;
+    // this.SMMA.update((candle.high + candle.close + candle.low + candle.vwp) / 4);
+    // let smmaFast = this.SMMA.result;
 
     if (1 === this.scale && 1 < candle.high && 0 === this.predictionCount) this.setNormalizeFactor(candle);
 
     this.candle = candle;
     this.priceBuffer.push([
-
-      (candle.low / this.settings.scale),
-      (candle.high / this.settings.scale),
-      (candle.close / this.settings.scale),
-      (candle.open / this.settings.scale),
+      (candle.low / this.scale),
+      (candle.high / this.scale),
+      (candle.close / this.scale),
+      (candle.open / this.scale),
       (candle.volume / 1000)
     ]);
 
-    if ((d * 2) > this.priceBuffer.length) return;
 
-    for (let i = 0; i < (d * 3); ++i) this.learn();
+    // var out = '';
+    // for (var p in this.priceBuffer) {
+    //   out += p + ': ' + this.priceBuffer[p] + '\n';
+    // }
+    // log.debug('Price Buffer:' + out);
 
-    while (this.settings.price_buffer_len < this.priceBuffer.length) this.priceBuffer.shift();
+
+    if ((d * 2) > this.priceBuffer.length) return; // stops learning until there are two samples in the price buffer
+
+    for (let i = 0; i < (d * 3); ++i) this.learn(); //learn for 3* d each update? Sureley you only want that once...
+
+    while (this.settings.price_buffer_len < this.priceBuffer.length) this.priceBuffer.shift(); // remove old entries from the price buffer
   },
 
   onTrade: function(event) {
@@ -131,18 +138,28 @@ var strategy = {
 
   },
 
+  printObject: function(o) {
+    var out = '';
+    for (var p in o) {
+      out += p + ': ' + o[p] + '\n';
+    }
+    alert(out);
+  },
+
+
   predictCandle: function() {
     let vol = new convnetjs.Vol(this.priceBuffer);
     let prediction = this.nn.forward(vol);
+
     return prediction.w[0];
   },
 
   check: function(candle) {
-    if (this.predictionCount > this.settings.min_predictions) {
+    if (this.predictionCount > this.settings.min_predictions) { // if nn has been trained as much as specified in settings
       if (
         'buy' === this.prevAction &&
         this.settings.stoploss_enabled &&
-        'stoploss' === this.indicators.stoploss.action
+        'stoploss' === this.indicators.stoploss.action // stoploss is flagged
       ) {
         this.stoplossCounter++;
         // log.debug('>>>>>>>>>> STOPLOSS triggered <<<<<<<<<<');
@@ -151,6 +168,7 @@ var strategy = {
 
       let prediction = this.predictCandle() * this.scale;
       let currentPrice = candle.close;
+      log.debug('Price = ' + currentPrice + ', Prediction = ' + prediction);
       let meanp = math.mean(prediction, currentPrice);
       let meanAlpha = (meanp - currentPrice) / currentPrice * 100;
 

@@ -59,7 +59,8 @@ var strat = {
     })
 
     // Previous RSI value
-    this.lastRsi = 0;
+    this.lastBearRsi = 50;
+    this.lastBullRsi = 50;
 
     // MOD (RSI modifiers)
     this.BULL_MOD_high = this.settings.BULL_MOD_high;
@@ -149,10 +150,11 @@ var strat = {
       if (adx > this.settings.ADX_high) rsi_hi = rsi_hi + this.BEAR_MOD_high;
       else if (adx < this.settings.ADX_low) rsi_low = rsi_low + this.BEAR_MOD_low;
 
-      if (rsi > rsi_hi && rsi < this.lastRsi) this.short();
-      else if (rsi < rsi_low && rsi > this.lastRsi) this.long(candle);
+      if (rsi > rsi_hi && rsi < this.lastBearRsi) this.short();
+      else if (rsi < rsi_low && rsi > this.lastBearRsi) this.long(candle);
 
       if (this.debug) this.lowHigh(rsi, 'bear');
+      this.lastBearRsi = rsi;
     }
 
     // BULL TREND
@@ -166,16 +168,16 @@ var strat = {
       else if (adx < this.settings.ADX_low) rsi_low = rsi_low + this.BULL_MOD_low;
 
 
-      if (rsi > rsi_hi && rsi < this.lastRsi) this.short(); // && RSI no longer increasing.
-      else if (rsi < rsi_low && rsi > this.lastRsi) this.long(candle); //&& RSI no longer decreasing
+      if (rsi > rsi_hi && rsi < this.lastBullRsi) this.short(); // && RSI no longer increasing.
+      else if (rsi < rsi_low && rsi > this.lastBullRsi) this.long(candle); //&& RSI no longer decreasing
       if (this.debug) this.lowHigh(rsi, 'bull');
+      this.lastBullRsi = rsi;
     }
 
     // add adx low/high if debug
     if (this.debug) this.lowHigh(adx, 'adx');
 
 
-    this.lastRsi = rsi;
 
   }, // check()
 
