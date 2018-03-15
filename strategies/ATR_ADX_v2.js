@@ -50,7 +50,7 @@ var strat = {
       optInTimePeriod: this.settings.ADX
     })
 
-    this.addIndicator('sma', 'SMA', 2);
+    this.addIndicator('ema', 'EMA', 2);
 
     //Directional Indicator - Needed to decide initial long or short position on strat start
     this.addTulipIndicator('DI', 'di', {
@@ -169,8 +169,8 @@ var strat = {
   //called on each new candle, before check.
   update: function(candle) {
     this.HACandle = this.heikenAshi(candle);
-    // this.updateMinMax(candle);
-    this.updateMinMaxAverage(this.HACandle);
+    this.updateMinMax(candle);
+    // this.updateMinMaxAverage(this.HACandle);
     this.previousCandle = candle; //for HA calculation
   },
 
@@ -183,7 +183,7 @@ var strat = {
       adx = ind.ADX.result.result,
       di = ind.DI.result,
       price = this.HACandle.close,
-      sma = this.indicators.sma.result;
+      ema = this.indicators.ema.result;
 
 
     //Reset the min max if the trend is new
@@ -193,7 +193,7 @@ var strat = {
 
     if (adx !== undefined) {
       // This is a seriously bad workaround for the adx indicator returning undefined for
-      // over double the ADX period. Until I've worked out why, this stops the strategy
+      // over double the expected history period. Until I've worked out why, this stops the strategy
       // from running until all data is present...
 
 
@@ -210,13 +210,17 @@ var strat = {
 
         // Stop can only increase, therefore only use the new stop if it is higher than current stop
         // If trend is new, bull stop will never be higher than bear stop, therefore use it anyway.
-        if (newStop > this.stop || this.newTrend) {
-          this.stop = newStop;
-          this.newTrend = false;
+        if (newStop > this.stop) {
+          if (this.newTrend) {
+            this.stop = this.periodMin;
+            this.newTrend = false;
+          } else {
+            this.stop = newStop;
+          }
         }
 
         //If candle close price has passed the latest stop, change advice to short
-        if (sma <= this.stop) {
+        if (ema <= this.stop) {
           this.short();
         }
 
@@ -229,12 +233,16 @@ var strat = {
         // let newStop = this.periodMin + (atr * this.settings.Buy_Offset) + atr * Math.pow((1 + adx / 100), ((1 + adx / 100) * this.settings.Buy_ADX_Modifier));
         let newStop = this.periodMin + (atr * this.settings.Buy_Offset) - atr * (adx / 100) * this.settings.Buy_ADX_Modifier;
 
-        if (newStop < this.stop || this.newTrend) {
-          this.stop = newStop;
-          this.newTrend = false;
+        if (newStop < this.stop) {
+          if (this.newTrend) {
+            this.stop = this.periodMax
+            this.newTrend = false;
+          } else {
+            this.stop = newStop;
+          }
         }
         //check if price has hit target
-        if (sma >= this.stop) {
+        if (ema >= this.stop) {
           this.long();
         }
       }
