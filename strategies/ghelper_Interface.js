@@ -8,6 +8,7 @@ var method = {};
 // prepare everything our method needs
 method.init = function() {
   this.name = 'ghelper';
+  this.url = "http://127.0.0.1:3030/data"
 
 
   this.requiredHistory = this.tradingAdvisor.historySize;
