@@ -7,10 +7,10 @@ const request = require('request');
 var log = require('../core/log.js');
 var util = require('../core/util.js');
 var config = util.getConfig();
-var gfc = config.Gforms;
+var gfc = config.gforms;
 
 
-var Gforms = function(done) {
+var gforms = function(done) {
   _.bindAll(this);
 
   this.pusher;
@@ -22,25 +22,25 @@ var Gforms = function(done) {
   this.setup();
 };
 
-Gforms.prototype.setup = function(done) {
+gforms.prototype.setup = function(done) {
   //noting to do here I think...
 
 };
 
-Gforms.prototype.processCandle = function(candle, done) {
+gforms.prototype.processCandle = function(candle, done) {
   this.price = candle.close;
 
   done();
 };
 
-Gforms.prototype.processAdvice = function(advice) {
+gforms.prototype.processAdvice = function(advice) {
   //Sending on advice doesn't give the actual trade outcomes
 };
 
 
 //https://docs.google.com/forms/d/e/1FAIpQLSd25HieT98AETLLirpibgCOLQF4ArO1p1GdCHmuYbvXRvtmMA/viewform?usp=pp_url&entry.1346916648=exc&entry.1743858251=cur&entry.105864059=ast&entry.68010386=eve&entry.3616735=act&entry.1463011579=pri&entry.1529244935=dat&entry.433943481=port&entry.620326103=bal
 
-Gforms.prototype.processTrade = function(trade) {
+gforms.prototype.processTrade = function(trade) {
   let currency = config.watch.currency;
   let asset = config.watch.asset;
   let exchange = config.watch.exchange;
@@ -66,4 +66,4 @@ Gforms.prototype.processTrade = function(trade) {
 
 };
 
-module.exports = Gforms;
+module.exports = gforms;
