@@ -22,8 +22,7 @@
 // emits: events emitted by this plugin that other plugins can subscribe to.
 // path: fn that returns path of file of the plugin (overwrites `gekko/plugins/{slug}`)
 //    when given the configuration object (relative from `gekko/plugins/`).
-var plugins = [
-  {
+var plugins = [{
     name: 'Candle writer',
     description: 'Store candles in a database',
     slug: 'candleWriter',
@@ -84,6 +83,17 @@ var plugins = [
     dependencies: [{
       module: 'pushover-notifications',
       version: '0.2.3'
+    }]
+  },
+  {
+    name: 'Google Forms',
+    description: 'Logs Trades to Google Forms',
+    slug: 'gforms',
+    async: false,
+    modes: ['realtime'],
+    dependencies: [{
+      module: 'request',
+      version: '2.85.0'
     }]
   },
   {

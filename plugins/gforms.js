@@ -12,33 +12,28 @@ var gfc = config.gforms;
 
 var gforms = function(done) {
   _.bindAll(this);
+  log.debug('gforms function');
 
-  this.pusher;
-  this.price = 'N/A';
-  this.formID = gfc.formID; //'1FAIpQLSd25HieT98AETLLirpibgCOLQF4ArO1p1GdCHmuYbvXRvtmMA' TODO delete this comment!
-  this.formUrl = 'https://docs.google.com/forms/d/e/' + this.formID '+/viewform?usp=pp_url&'
+  this.formID = gfc.formID;
+  this.formUrl = 'https://docs.google.com/forms/d/e/' + this.formID + '/formResponse?usp=pp_url&'
 
   this.done = done;
   this.setup();
 };
 
 gforms.prototype.setup = function(done) {
-  //noting to do here I think...
+  var setupGforms = function(err, result) {
+    console.log('gForms Plugin Active. Any new trades will be sent to your google form');
+
+  };
+  setupGforms.call(this)
 
 };
 
-gforms.prototype.processCandle = function(candle, done) {
-  this.price = candle.close;
 
-  done();
-};
-
-gforms.prototype.processAdvice = function(advice) {
-  //Sending on advice doesn't give the actual trade outcomes
-};
-
-
-//https://docs.google.com/forms/d/e/1FAIpQLSd25HieT98AETLLirpibgCOLQF4ArO1p1GdCHmuYbvXRvtmMA/viewform?usp=pp_url&entry.1346916648=exc&entry.1743858251=cur&entry.105864059=ast&entry.68010386=eve&entry.3616735=act&entry.1463011579=pri&entry.1529244935=dat&entry.433943481=port&entry.620326103=bal
+// &entry.1346916648=exchange&entry.1743858251=currency&entry.105864059=Asset&entry.68010386=Event&
+//entry.1463011579=Price&entry.1529244935=Date&entry.3616735=AssetInPorf&entry.433943481=CurrenInPort&
+//entry.1202282384=PortBalance&entry.620326103=Balance
 
 gforms.prototype.processTrade = function(trade) {
   let currency = config.watch.currency;
@@ -50,17 +45,18 @@ gforms.prototype.processTrade = function(trade) {
     'entry.' + gfc.exchange + '=' + exchange + '&' +
     'entry.' + gfc.currency + '=' + currency + '&' +
     'entry.' + gfc.asset + '=' + asset + '&' +
-    'entry.' + gfc.event + '=trade' + '&' +
     'entry.' + gfc.action + '=' + trade.action + '&' +
     'entry.' + gfc.price + '=' + trade.price + '&' +
-    'entry.' + gfc.date + '=' + trade.date + '&' +
-    'entry.' + gfc.portfolio + '=' + trade.portfolio + '&' +
+    'entry.' + gfc.assetCount + '=' + trade.portfolio.asset + '&' +
+    'entry.' + gfc.currencyCount + '=' + trade.portfolio.currency + '&' +
+    'entry.' + gfc.portfolioBalance + '=' + trade.portfolio.balance + '&' +
     'entry.' + gfc.balance + '=' + trade.balance;
 
-  request.post(this.formUrl + datastring, function(error, response) {
+  console.log(this.formUrl + dataString);
+
+  request.post(this.formUrl + dataString + '&submit=Submit', function(error, response) {
     console.log('error:', error); // Print the error if one occurred
     console.log('statusCode:', response && response.statusCode); // Print the response status code if a response was received
-    console.log('body:', body); // Print the HTML for the Google homepage.
   });
 
 
