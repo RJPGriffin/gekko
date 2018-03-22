@@ -283,6 +283,23 @@ config.pushbullet = {
   tag: '[GEKKO]'
 };
 
+config.gforms = {
+  // Posts to a google form every time a trade is made
+  enabled: false,
+  //Form ID - the long code from the form url
+  formID: '',
+  //Form question ID's - get them from a prefilled link
+  exchange: '',
+  currency: '',
+  asset: '',
+  event: '',
+  action: '',
+  price: '',
+  date: '',
+  portfolio: '',
+  balance: ''
+};
+
 config.kodi = {
   // if you have a username & pass, add it like below
   // http://user:pass@ip-or-hostname:8080/jsonrpc
