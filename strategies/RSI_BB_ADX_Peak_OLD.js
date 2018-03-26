@@ -3,13 +3,10 @@
 	1. Use different RSI-strategies depending on a longer trend
 	2. But modify this slighly if shorter BULL/BEAR is detected
 	-
+	12 feb 2017
+	-
 	(CC-BY-SA 4.0) Tommie Hansen
 	https://creativecommons.org/licenses/by-sa/4.0/
-	-
-	NOTE: Requires custom indicators found here:
-	https://github.com/Gab0/Gekko-extra-indicators
-	(c) Gabriel Araujo
-	Howto: Download + add to gekko/strategies/indicators
 */
 
 // req's
@@ -21,41 +18,58 @@ var strat = {
 
   /* INIT */
   init: function() {
-    // core
     this.name = 'RSI Bull and Bear + ADX';
     this.requiredHistory = config.tradingAdvisor.historySize;
     this.resetTrend();
 
-    // debug? set to false to disable all logging/messages/stats (improves performance in backtests)
+    // debug? set to flase to disable all logging/messages/stats (improves performance)
     this.debug = false;
+    config.backtest.batchSize = 20000 //reduce db reads
+
+    //GA Settings CHECK
+    log.debug('SMA Long: ' + this.settings.SMA_long);
+    log.debug('SMA Short: ' + this.settings.SMA_short);
+    log.debug('Bull RSI: ' + this.settings.BULL_RSI);
+    log.debug('Bear RSI: ' + this.settings.BEAR_RSI);
 
     // performance
     config.backtest.batchSize = 1000; // increase performance
-    config.silent = true; // NOTE: You may want to set this to 'false' @ live
+    config.silent = true;
     config.debug = false;
 
     // SMA
-    this.addIndicator('maSlow', 'SMA', this.settings.SMA_long);
-    this.addIndicator('maFast', 'SMA', this.settings.SMA_short);
+    this.addTulipIndicator('maSlow', 'sma', {
+      optInTimePeriod: this.settings.SMA_long
+    });
+    this.addTulipIndicator('maFast', 'sma', {
+      optInTimePeriod: this.settings.SMA_short
+    });
 
     // RSI
-    this.addIndicator('BULL_RSI', 'RSI', {
-      interval: this.settings.BULL_RSI
+    this.addTulipIndicator('BULL_RSI', 'rsi', {
+      optInTimePeriod: this.settings.BULL_RSI
     });
-    this.addIndicator('BEAR_RSI', 'RSI', {
-      interval: this.settings.BEAR_RSI
+    this.addTulipIndicator('BEAR_RSI', 'rsi', {
+      optInTimePeriod: this.settings.BEAR_RSI
     });
 
-    this.prevRsiBull = 0;
-    this.prevRsiBear = 0;
     // ADX
-    this.addIndicator('ADX', 'ADX', this.settings.ADX);
+    this.addTulipIndicator('ADX', 'adx', {
+      optInTimePeriod: this.settings.ADX
+    })
+
+    // Previous RSI value
+    this.lastBearRsi = 50;
+    this.lastBullRsi = 50;
 
     // MOD (RSI modifiers)
     this.BULL_MOD_high = this.settings.BULL_MOD_high;
     this.BULL_MOD_low = this.settings.BULL_MOD_low;
     this.BEAR_MOD_high = this.settings.BEAR_MOD_high;
     this.BEAR_MOD_low = this.settings.BEAR_MOD_low;
+
+    // Stop Loss
+    this.lastLongPrice = 0; // start at 0
 
 
     // debug stuff
@@ -77,19 +91,6 @@ var strat = {
           max: 0
         }
       };
-    }
-
-    /* MESSAGES */
-
-    // message the user about required history
-    log.info("====================================");
-    log.info('Running', this.name);
-    log.info('====================================');
-    log.info("Make sure your warmup period matches SMA_long and that Gekko downloads data if needed");
-
-    // warn users
-    if (this.requiredHistory < this.settings.SMA_long) {
-      log.warn("*** WARNING *** Your Warmup period is lower then SMA_long. If Gekko does not download data automatically when running LIVE the strategy will default to BEAR-mode until it has enough data.");
     }
 
   }, // init()
@@ -127,18 +128,21 @@ var strat = {
 
 
   /* CHECK */
-  check: function() {
+  check: function(candle) {
     // get all indicators
-    let ind = this.indicators,
-      maSlow = ind.maSlow.result,
-      maFast = ind.maFast.result,
+    let ind = this.tulipIndicators,
+      maSlow = ind.maSlow.result.result,
+      maFast = ind.maFast.result.result,
       rsi,
-      adx = ind.ADX.result;
+      adx = ind.ADX.result.result;
 
+
+    if (candle.close < this.lastLongPrice * (this.settings.Stop_Loss_Percent / 100)) {
+      this.short();
+    }
     // BEAR TREND
-    // NOTE: maFast will always be under maSlow if maSlow can't be calculated
-    if (maFast < maSlow) {
-      rsi = ind.BEAR_RSI.result;
+    else if (maFast < maSlow) {
+      rsi = ind.BEAR_RSI.result.result;
       let rsi_hi = this.settings.BEAR_RSI_high,
         rsi_low = this.settings.BEAR_RSI_low;
 
@@ -146,16 +150,16 @@ var strat = {
       if (adx > this.settings.ADX_high) rsi_hi = rsi_hi + this.BEAR_MOD_high;
       else if (adx < this.settings.ADX_low) rsi_low = rsi_low + this.BEAR_MOD_low;
 
-      if (rsi > rsi_hi && rsi < this.prevRsiBear) this.short();
-      else if (rsi < rsi_low && rsi > this.prevRsiBear) this.long();
+      if (rsi > rsi_hi && rsi <= this.lastBearRsi) this.short();
+      else if (rsi < rsi_low && rsi >= this.lastBearRsi) this.long(candle);
 
       if (this.debug) this.lowHigh(rsi, 'bear');
-      this.prevRsiBear = rsi;
+      this.lastBearRsi = rsi;
     }
 
     // BULL TREND
     else {
-      rsi = ind.BULL_RSI.result;
+      rsi = ind.BULL_RSI.result.result;
       let rsi_hi = this.settings.BULL_RSI_high,
         rsi_low = this.settings.BULL_RSI_low;
 
@@ -163,25 +167,29 @@ var strat = {
       if (adx > this.settings.ADX_high) rsi_hi = rsi_hi + this.BULL_MOD_high;
       else if (adx < this.settings.ADX_low) rsi_low = rsi_low + this.BULL_MOD_low;
 
-      if (rsi > rsi_hi && rsi <= this.prevRsiBull) this.short();
-      else if (rsi < rsi_low && rsi > this.prevRsiBull) this.long();
+
+      if (rsi > rsi_hi && rsi <= this.lastBullRsi) this.short(); // && RSI no longer increasing.
+      else if (rsi < rsi_low && rsi >= this.lastBullRsi) this.long(candle); //&& RSI no longer decreasing
       if (this.debug) this.lowHigh(rsi, 'bull');
-      this.prevRsiBull = rsi;
+      this.lastBullRsi = rsi;
     }
 
     // add adx low/high if debug
     if (this.debug) this.lowHigh(adx, 'adx');
 
+
+
   }, // check()
 
 
   /* LONG */
-  long: function() {
+  long: function(candle) {
     if (this.trend.direction !== 'up') // new trend? (only act on new trends)
     {
       this.resetTrend();
       this.trend.direction = 'up';
       this.advice('long');
+      this.lastLongPrice = candle.close;
       if (this.debug) log.info('Going long');
     }
 
