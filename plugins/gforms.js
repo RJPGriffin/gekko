@@ -15,7 +15,7 @@ var gforms = function(done) {
 
   this.pusher;
   this.price = 'N/A';
-  this.formID = gfc.formID; //'1FAIpQLSd25HieT98AETLLirpibgCOLQF4ArO1p1GdCHmuYbvXRvtmMA' TODO delete this comment!
+  this.formID = gfc.formID; 
   this.formUrl = 'https://docs.google.com/forms/d/e/' + this.formID '+/viewform?usp=pp_url&'
 
   this.done = done;
@@ -38,7 +38,7 @@ gforms.prototype.processAdvice = function(advice) {
 };
 
 
-//https://docs.google.com/forms/d/e/1FAIpQLSd25HieT98AETLLirpibgCOLQF4ArO1p1GdCHmuYbvXRvtmMA/viewform?usp=pp_url&entry.1346916648=exc&entry.1743858251=cur&entry.105864059=ast&entry.68010386=eve&entry.3616735=act&entry.1463011579=pri&entry.1529244935=dat&entry.433943481=port&entry.620326103=bal
+
 
 gforms.prototype.processTrade = function(trade) {
   let currency = config.watch.currency;
