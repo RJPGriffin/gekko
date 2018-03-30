@@ -62,6 +62,17 @@ var plugins = [{
       version: '0.24.0'
     }]
   },
+   {
+        name: 'Google Forms',
+        description: 'Logs Trades to Google Forms',
+        slug: 'gforms',
+        async: false,
+        modes: ['realtime'],
+        dependencies: [{
+          module: 'request',
+          version: '2.85.0'
+        }]
+      },
   {
     name: 'XMPP bot',
     description: 'XMPP module lets you communicate with Gekko on Jabber.',
