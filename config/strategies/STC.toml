@@ -6,4 +6,3 @@ Cycle = 10
 [thresholds]
 low = 30
 high = 70
-persistence = 1

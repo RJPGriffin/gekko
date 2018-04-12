@@ -18,10 +18,13 @@ var method = {};
 // prepare everything our method needs
 method.init = function() {
   this.name = 'STC';
+  this.resetTrend();
 
   config.backtest.batchSize = 1000; // increase performance
   config.silent = true; // NOTE: You may want to set this to 'false' @ live
   config.debug = false;
+
+  this.prevStcVal = 0
 
   this.trend = {
     direction: 'none',
@@ -34,6 +37,16 @@ method.init = function() {
 
   // define the indicators we need
   this.addIndicator('stc', 'STC', this.settings.STC);
+}
+
+method.resetTrend = function() {
+  var trend = {
+    duration: 0,
+    direction: 'none',
+    longPos: false,
+  };
+
+  this.trend = trend;
 }
 
 // for debugging purposes log the last
@@ -50,60 +63,47 @@ method.log = function(candle) {
 method.check = function() {
   var stc = this.indicators.stc;
   var stcVal = stc.result;
+  thrHigh = this.settings.thresholds.high;
+  thrLow = this.settings.thresholds.low;
 
-  if (stcVal > this.settings.thresholds.high) {
+  if (this.prevStcVal > thrHigh && stcVal <= thrHigh) {
+    this.advice('short');
+  } else if (this.prevStcVal < thrLow && stcVal >= thrLow) {
+    this.advice('long')
+  }
 
-    // new trend detected
-    if (this.trend.direction !== 'high')
-      this.trend = {
-        duration: 0,
-        persisted: false,
-        direction: 'high',
-        adviced: false
-      };
+  this.prevStcVal = stcVal;
+}
 
+method.long = function() {
+  if (this.trend.direction !== 'up') // new trend? (only act on new trends)
+  {
+    this.resetTrend();
+    this.trend.direction = 'up';
+    this.advice('long');
+    if (this.debug) log.info('Going long');
+  }
+
+  if (this.debug) {
     this.trend.duration++;
+    log.info('Long since', this.trend.duration, 'candle(s)');
+  }
+}
 
-    //log.debug('In high since', this.trend.duration, 'candle(s)');
 
-    if (this.trend.duration >= this.settings.thresholds.persistence)
-      this.trend.persisted = true;
+/* SHORT */
+method.short = function() {
+  // new trend? (else do things)
+  if (this.trend.direction !== 'down') {
+    this.resetTrend();
+    this.trend.direction = 'down';
+    this.advice('short');
+    if (this.debug) log.info('Going short');
+  }
 
-    if (this.trend.persisted && !this.trend.adviced) {
-      this.trend.adviced = true;
-      this.advice('short');
-    } else
-      this.advice();
-
-  } else if (stcVal < this.settings.thresholds.low) {
-
-    // new trend detected
-    if (this.trend.direction !== 'low')
-      this.trend = {
-        duration: 0,
-        persisted: false,
-        direction: 'low',
-        adviced: false
-      };
-
+  if (this.debug) {
     this.trend.duration++;
-
-    //log.debug('In low since', this.trend.duration, 'candle(s)');
-
-    if (this.trend.duration >= this.settings.thresholds.persistence)
-      this.trend.persisted = true;
-
-    if (this.trend.persisted && !this.trend.adviced) {
-      this.trend.adviced = true;
-      this.advice('long');
-    } else
-      this.advice();
-
-  } else {
-
-    //log.debug('In no trend');
-
-    this.advice();
+    log.info('Short since', this.trend.duration, 'candle(s)');
   }
 }
 
