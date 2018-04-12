@@ -146,8 +146,13 @@ var strat = {
       if (adx > this.settings.ADX_high) rsi_hi = rsi_hi + this.BEAR_MOD_high;
       else if (adx < this.settings.ADX_low) rsi_low = rsi_low + this.BEAR_MOD_low;
 
-      if (rsi > rsi_hi && rsi < this.prevRsiBear) this.short();
-      else if (rsi < rsi_low && rsi > this.prevRsiBear) this.long();
+      if (this.settings.ReEntry === 1) {
+        if (this.prevRsiBear > rsi_hi && rsi <= rsi_hi) this.short(); //This might give some odd results when ADX passes thresholds...
+        else if (this.prevRsiBear < rsi_low && rsi >= this.rsi_low) this.long();
+      } else {
+        if (rsi > rsi_hi) this.short();
+        else if (rsi < rsi_low) this.long();
+      }
 
       if (this.debug) this.lowHigh(rsi, 'bear');
       this.prevRsiBear = rsi;
@@ -163,8 +168,13 @@ var strat = {
       if (adx > this.settings.ADX_high) rsi_hi = rsi_hi + this.BULL_MOD_high;
       else if (adx < this.settings.ADX_low) rsi_low = rsi_low + this.BULL_MOD_low;
 
-      if (rsi > rsi_hi && rsi <= this.prevRsiBull) this.short();
-      else if (rsi < rsi_low && rsi > this.prevRsiBull) this.long();
+      if (this.settings.ReEntry === 1) {
+        if (this.prevRsiBull > rsi_hi && rsi <= rsi_hi) this.short();
+        else if (this.prevRsiBull < rsi_low && rsi >= rsi_low) this.long();
+      } else {
+        if (rsi > rsi_hi) this.short();
+        else if (rsi < rsi_low) this.long();
+      }
       if (this.debug) this.lowHigh(rsi, 'bull');
       this.prevRsiBull = rsi;
     }

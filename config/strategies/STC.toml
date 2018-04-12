@@ -1,0 +1,9 @@
+[STC]
+Fast_MA = 23
+Slow_MA = 50
+Cycle = 10
+
+[thresholds]
+low = 30
+high = 70
+persistence = 1
