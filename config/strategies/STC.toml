@@ -1,7 +1,8 @@
 [STC]
-Fast_MA = 23
-Slow_MA = 50
-Cycle = 10
+fastLength = 23
+slowLength = 50
+stcLength = 10
+factor = 0.5
 
 [thresholds]
 low = 30
