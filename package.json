@@ -45,7 +45,7 @@
     "kraken-api-es5": "^1.0.0",
     "lakebtc_nodejs": "0.1.x",
     "lodash": "^2.4.2",
-    "mathjs": "^4.0.0",
+    "mathjs": "^4.1.1",
     "moment": "^2.20.1",
     "node-telegram-bot-api": "^0.30.0",
     "node-wex": "^1.0.3",
