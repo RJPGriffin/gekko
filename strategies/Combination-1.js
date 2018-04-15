@@ -24,7 +24,6 @@ var strat = {
     // core
     this.name = 'RSI Bull and Bear + BBands + ADX';
     this.requiredHistory = config.tradingAdvisor.historySize;
-    this.resetTrend();
 
     // debug? set to false to disable all logging/messages/stats (improves performance in backtests)
     this.debug = false;
@@ -37,6 +36,10 @@ var strat = {
     // SMA
     this.addIndicator('maSlow', 'SMA', this.settings.SMA_long);
     this.addIndicator('maFast', 'SMA', this.settings.SMA_short);
+
+    //Short Term SMA/EMA
+    this.addIndicator('fastMaFast', 'EMA', 3);
+    this.addIndicator('fastMaSlow', 'SMA', 6);
 
     // RSI
     this.addIndicator('BULL_RSI', 'RSI', {
@@ -67,6 +70,10 @@ var strat = {
     this.BEAR_MOD_high = this.settings.BEAR_MOD_high;
     this.BEAR_MOD_low = this.settings.BEAR_MOD_low;
 
+    this.diffMax = 0;
+    this.diffMin = 100;
+    this.tradesDelayed = 0;
+
     //Advice tracking object. Weighting signals allows adding extra indicators without adjusting hard trading logic.
     this.signals = {
       bull: {
@@ -76,9 +83,12 @@ var strat = {
       bear: {
         RSI: 0,
         BB: 0
-      }
+      },
+      fastMaDiff: 0,
+      intermediateAdvice: 'none'
     };
 
+    this.resetTrend();
 
 
     // debug stuff
@@ -125,7 +135,7 @@ var strat = {
       direction: 'none',
       longPos: false,
     };
-
+    this.signals.intermediateAdvice = 'none';
     this.trend = trend;
   },
 
@@ -158,8 +168,17 @@ var strat = {
       rsi,
       market,
       bbands,
-      price = candle.close,
+      fastMaFast = ind.fastMaFast.result;
+    fastMaSlow = ind.fastMaSlow.result;
+    price = candle.close,
       adx = ind.ADX.result;
+
+    this.signals.fastMaDiff = ((fastMaFast - fastMaSlow) / maSlow) * 100;
+    //Tests indicate this fastMA can actually work, but needs to be done on shorter time frames than the main candles
+    if (this.signals.fastMaDiff > this.diffMax) this.diffMax = this.signals.fastMaDiff;
+    if (this.signals.fastMaDiff < this.diffMin) this.diffMin = this.signals.fastMaDiff;
+
+    // log.debug('Fast Diference %: ' + this.signals.fastMaDiff);
 
     // BEAR TREND
     // NOTE: maFast will always be under maSlow if maSlow can't be calculated
@@ -221,19 +240,47 @@ var strat = {
       val = this.signals.bear;
     }
 
-    signalScore = val.RSI + val.BB;
+    signalScore = val.RSI // + val.BB;
 
-    if (signalScore >= 2) {
-      this.long();
-    } else if (signalScore <= -2) {
-      this.short();
+    if (this.signals.intermediateAdvice === 'none') {
+      if (signalScore <= -1) {
+        if (this.signals.fastMaDiff > -this.settings.fastPercentCheck) {
+          this.long();
+        } else if (this.trend.direction !== 'up') {
+          this.tradesDelayed++;
+          log.debug('Delaying Buy, percent diff is: ' + this.signals.fastMaDiff)
+          this.signals.intermediateAdvice = 'long'
+        }
+      } else if (signalScore >= 1) {
+        if (this.signals.fastMaDiff < this.settings.fastPercentCheck) {
+          this.short();
+        } else if (this.trend.direction !== 'down') {
+          this.tradesDelayed++;
+          log.debug('Delaying Sell, percent diff is: ' + this.signals.fastMaDiff)
+          this.signals.intermediateAdvice = 'short';
+        }
+      }
+    } else if (this.signals.intermediateAdvice === 'long') {
+      log.debug('Inter Advice shoud be long: ' + this.signals.intermediateAdvice);
+      if (this.signals.fastMaDiff >= -this.settings.fastPercentCheck) {
+        log.debug('Completing Delayed Buy, percent diff is: ' + this.signals.fastMaDiff);
+        this.long();
+      }
+    } else if (this.signals.intermediateAdvice === 'short') {
+      log.debug('Inter Advice should be Short: ' + this.signals.intermediateAdvice);
+      if (this.signals.fastMaDiff <= this.settings.fastPercentCheck) {
+        log.debug('Completing Delayed Sell, percent diff is: ' + this.signals.fastMaDiff);
+        this.short();
+      }
     }
+
 
 
   },
 
   /* LONG */
   long: function() {
+    // log.info('Entering Long. Trend Direction is: ' + this.trend.direction);
     if (this.trend.direction !== 'up') // new trend? (only act on new trends)
     {
       this.resetTrend();
@@ -252,6 +299,7 @@ var strat = {
   /* SHORT */
   short: function() {
     // new trend? (else do things)
+    // log.info('Entering Short. Trend Direction is: ' + this.trend.direction);
     if (this.trend.direction !== 'down') {
       this.resetTrend();
       this.trend.direction = 'down';
@@ -277,6 +325,10 @@ var strat = {
     log.info('====================================');
     log.info('Finished in ' + str);
     log.info('====================================');
+
+    log.info('Max Diff: ' + this.diffMax);
+    log.info('Min Diff: ' + this.diffMin);
+    log.info('Trades Delayed: ' + this.tradesDelayed);
 
     // print stats and messages if debug
     if (this.debug) {

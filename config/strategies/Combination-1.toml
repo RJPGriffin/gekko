@@ -2,6 +2,9 @@
 SMA_long = 1000
 SMA_short = 50
 
+#Fast Check Percentage
+fastPercentCheck = 5
+
 # RSI BULL / BEAR
 BULL_RSI = 10
 BULL_RSI_high = 80
