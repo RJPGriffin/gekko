@@ -32,6 +32,16 @@ method.init = function() {
 
   this.marketType = 'none'
 
+  this.position = 0;
+
+  this.stoploss = {
+    active: false,
+    price: 0
+  };
+
+  // Tracks rsi above/below/middle to test reentry without getting caught by moving thresholds
+  this.prevRsi = 'middle';
+
   this.lowThreshold = 0;
   this.highThreshold = 100;
 
@@ -119,9 +129,10 @@ method.check = function(candle) {
   // maybe mean + a stdDev
   let highUpdate, lowUpdate;
 
-  let mM = this.settings.marketModifier;
+  let BullmM = this.settings.BullMarketModifier;
+  let BearmM = this.settings.BearMarketModifier;
 
-  let modifier = this.market === 'bull' ? mM : -mM;
+  let modifier = this.market === 'bull' ? BullmM : -BearmM;
 
   if (typeof rsiPeaks[2] != 'undefined') {
     this.highEma.update(((rsiPeaks[0] + rsiPeaks[1]) / 2) + modifier);
@@ -137,66 +148,61 @@ method.check = function(candle) {
 
 
 
-  fs.appendFile('ResultsLog/Autotune Test ' + this.startTime + '.csv', candle.high + "," + rsi + "," + this.lowThreshold + "," + this.highThreshold + "\n", function(err) {
-    if (err) {
-      return console.log(err);
-    }
-  });
 
 
-  if (rsi > this.highThreshold) {
+  if (rsi <= this.highThreshold && this.prevRsi === 'above') {
+    // log.debug('Selling')
+    this.short();
+    this.prevRsi = 'middle';
 
-    // new trend detected
-    if (this.trend.direction !== 'high')
-      this.trend = {
-        duration: 0,
-        persisted: false,
-        direction: 'high',
-        adviced: false
-      };
-
-    this.trend.duration++;
-
-    // // log.debug('In high since', this.trend.duration, 'candle(s)');
-
-    if (this.trend.duration >= this.settings.persistence)
-      this.trend.persisted = true;
-
-    if (this.trend.persisted && !this.trend.adviced) {
-      this.trend.adviced = true;
-      this.advice('short');
-    } else
-      this.advice();
-
-  } else if (rsi < this.lowThreshold) {
-
-    // new trend detected
-    if (this.trend.direction !== 'low')
-      this.trend = {
-        duration: 0,
-        persisted: false,
-        direction: 'low',
-        adviced: false
-      };
-
-    this.trend.duration++;
-
-    // log.debug('In low since', this.trend.duration, 'candle(s)');
-
-    if (this.trend.duration >= this.settings.persistence)
-      this.trend.persisted = true;
-
-    if (this.trend.persisted && !this.trend.adviced) {
-      this.trend.adviced = true;
-      this.advice('long');
-    } else
-      this.advice();
-
+  } else if (rsi >= this.lowThreshold && this.prevRsi === 'below') {
+    // log.debug('Buying')
+    this.long(candle);
+    this.prevRsi = 'middle';
   } else {
+    this.prevRsi = rsi > this.highThreshold ? 'above' : rsi < this.lowThreshold ? 'below' : 'middle';
+  }
 
-    // // log.debug('In no trend');
+  this.checkStop(candle);
 
-    this.advice();
+  // fs.appendFile('ResultsLog/Autotune Test ' + this.startTime + '.csv', candle.high + "," + rsi + "," + this.lowThreshold + "," + this.highThreshold + "," + this.position + "\n", function(err) {
+  //   if (err) {
+  //     return console.log(err);
+  //   }
+  // });
+}
+
+method.checkStop = function(candle) {
+  if (this.stoploss.enabled) {
+    if (candle.price > this.stoploss.price) {
+      resetStoploss();
+    }
+  } else {
+    if (candle.price < this.stoploss.price) {
+      stoploss.enabled = 'true';
+      this.short();
+    }
+  }
+}
+
+method.resetStoploss = function() {
+  this.stoploss.enabled = 'false';
+  this.stoploss.price = 0;
+}
+
+method.long = function(candle) {
+  if (this.position != 100 && this.stoploss.enabled === 'false') {
+    this.advice('long');
+    this.stoploss.price = candle.close - candle.close * (this.settings.Stoploss / 100);
+    this.position = 100;
+  }
+}
+
+method.short = function() {
+  if (this.position != 0) {
+    this.advice('short');
+    this.resetStoploss();
+    this.position = 0;
   }
 }
 
