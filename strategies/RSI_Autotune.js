@@ -35,7 +35,7 @@ method.init = function() {
   this.position = 0;
 
   this.stoploss = {
-    active: false,
+    active: 'false',
     price: 0
   };
 
@@ -75,7 +75,8 @@ method.check = function(candle) {
   let ind = this.indicators;
   var rsi = ind.rsi.result,
     maSlow = ind.maSlow.result,
-    maFast = ind.maFast.result;
+    maFast = ind.maFast.result,
+    s = this.settings;
 
 
   if (maFast > maSlow) {
@@ -129,16 +130,19 @@ method.check = function(candle) {
   // maybe mean + a stdDev
   let highUpdate, lowUpdate;
 
-  let BullmM = this.settings.BullMarketModifier;
-  let BearmM = this.settings.BearMarketModifier;
 
-  let modifier = this.market === 'bull' ? BullmM : -BearmM;
+
+  let upperModifier = this.market === 'bull' ? s.BullMarketModifierUpper : -s.BearMarketModifierUpper;
+  let lowerModifier = this.market === 'bull' ? s.BullMarketModifierLower : -s.BearMarketModifierLower;
+
 
   if (typeof rsiPeaks[2] != 'undefined') {
-    this.highEma.update(((rsiPeaks[0] + rsiPeaks[1]) / 2) + modifier);
+    //this.highEma.update(((rsiPeaks[0] + rsiPeaks[1]) / 2) + upperModifier);
+    this.highEma.update(rsiPeaks[2] + upperModifier);
   }
   if (typeof rsiTroughs[2] != 'undefined') {
-    this.lowEma.update((rsiTroughs[0] + rsiTroughs[1]) / 2 + modifier);
+    // this.lowEma.update((rsiTroughs[0] + rsiTroughs[1]) / 2 + lowerModifier);
+    this.lowEma.update(rsiTroughs[2] + lowerModifier);
   }
 
 
@@ -149,51 +153,68 @@ method.check = function(candle) {
 
 
 
+  /*
+    if (rsi <= this.highThreshold && this.prevRsi === 'above') {
+      // log.debug('Selling')
+      this.short();
+      this.prevRsi = 'middle';
 
-  if (rsi <= this.highThreshold && this.prevRsi === 'above') {
+    } else if (rsi >= this.lowThreshold && this.prevRsi === 'below') {
+      // log.debug('Buying')
+      this.long(candle);
+      this.prevRsi = 'middle';
+    } else {
+      this.prevRsi = rsi > this.highThreshold ? 'above' : rsi < this.lowThreshold ? 'below' : 'middle';
+    }*/
+
+  if (rsi >= this.highThreshold && this.prevRsi === 'middle') {
     // log.debug('Selling')
     this.short();
-    this.prevRsi = 'middle';
+    this.prevRsi = 'above';
 
-  } else if (rsi >= this.lowThreshold && this.prevRsi === 'below') {
+  } else if (rsi <= this.lowThreshold && this.prevRsi === 'middle') {
     // log.debug('Buying')
     this.long(candle);
-    this.prevRsi = 'middle';
+    this.prevRsi = 'low';
   } else {
     this.prevRsi = rsi > this.highThreshold ? 'above' : rsi < this.lowThreshold ? 'below' : 'middle';
   }
 
+  // if (this.position === 100 && candle.close < this.stoploss.price) log.debug('Stoploss should have been triggered');
+
   this.checkStop(candle);
 
-  // fs.appendFile('ResultsLog/Autotune Test ' + this.startTime + '.csv', candle.high + "," + rsi + "," + this.lowThreshold + "," + this.highThreshold + "," + this.position + "\n", function(err) {
-  //   if (err) {
-  //     return console.log(err);
-  //   }
-  // });
+  fs.appendFile('ResultsLog/Autotune Test ' + this.startTime + '.csv', candle.high + "," + rsi + "," + this.lowThreshold + "," + this.highThreshold + "," + this.position + "\n", function(err) {
+    if (err) {
+      return console.log(err);
+    }
+  });
 }
 
 method.checkStop = function(candle) {
-  if (this.stoploss.enabled) {
+  if (this.stoploss.active === 'true') {
     if (candle.price > this.stoploss.price) {
       resetStoploss();
     }
   } else {
-    if (candle.price < this.stoploss.price) {
-      stoploss.enabled = 'true';
-      this.short();
+    if (this.position === 100 && candle.close < this.stoploss.price) { //bought in and price is lower than stop loss
+      log.debug('Stoploss Activated')
+      this.stoploss.enabled = true;
+      this.advice('short');
     }
   }
 }
 
 method.resetStoploss = function() {
-  this.stoploss.enabled = 'false';
+  this.stoploss.active = 'false';
   this.stoploss.price = 0;
 }
 
 method.long = function(candle) {
-  if (this.position != 100 && this.stoploss.enabled === 'false') {
+  if (this.position != 100 && this.stoploss.active === 'false') {
     this.advice('long');
     this.stoploss.price = candle.close - candle.close * (this.settings.Stoploss / 100);
+    // log.debug('Bought at ' + candle.close + ' Stoploss set to ' + this.stoploss.price.toFixed(6));
     this.position = 100;
   }
 }

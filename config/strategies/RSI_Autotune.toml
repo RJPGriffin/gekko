@@ -9,7 +9,9 @@ Threshold_Ema = 20;
 historyLength = 24
 Stoploss = 8
 
-BullMarketModifier = 3
-BearMarketModifier = 3
+BullMarketModifierUpper = 3
+BullMarketModifierLower = 3
+BearMarketModifierUpper = 3
+BearMarketModifierLower = 3
 
 persistence = 1
