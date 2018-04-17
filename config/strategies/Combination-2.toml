@@ -5,6 +5,8 @@ SMA_Timeframe = 7
 
 #Fast Check Percentage
 fastPercentCheck = 5
+fastMaFast = 3
+fastMaDiff = 1
 
 # RSI BULL / BEAR
 BULL_RSI = 10

@@ -39,8 +39,8 @@ var strat = {
     //Add Gekko Managed Indicators (M1 timeframe)
 
     //Short Term SMA/EMA
-    this.addIndicator('fastMaFast', 'SMA', 3);
-    this.addIndicator('fastMaSlow', 'SMA', 6);
+    this.addIndicator('fastMaFast', 'EMA', this.settings.fastMaFast);
+    this.addIndicator('fastMaSlow', 'SMA', this.settings.fastMaFast + this.settings.fastMaDiff);
 
     //Add Custom Timeframe indicators
     //SMA
@@ -77,6 +77,9 @@ var strat = {
     this.diffMax = 0;
     this.diffMin = 100;
     this.tradesDelayed = 0;
+    this.callPrice = 0; //Price trade would ahve been made at
+    this.delayedBuys = [];
+    this.delayedSells = [];
 
     //Advice tracking object. Weighting signals allows adding extra indicators without adjusting hard trading logic.
     this.signals = {
@@ -281,8 +284,9 @@ var strat = {
           this.long();
         } else if (this.trend.direction !== 'up') {
           this.tradesDelayed++;
-          log.debug('Delaying Buy, percent diff is: ' + this.signals.fastMaDiff.toFixed(3))
-          log.debug('Price is: ' + candle.close);
+          this.callPrice = candle.close;
+          // log.debug('Delaying Buy, percent diff is: ' + this.signals.fastMaDiff.toFixed(3))
+          // log.debug('Price is: ' + candle.close);
           this.signals.intermediateAdvice = 'long'
         }
       } else if (signalScore >= 1) {
@@ -291,21 +295,27 @@ var strat = {
           this.short();
         } else if (this.trend.direction !== 'down') {
           this.tradesDelayed++;
-          log.debug('Delaying Sell, percent diff is: ' + this.signals.fastMaDiff.toFixed(3))
-          log.debug('Price is: ' + candle.close);
+          this.callPrice = candle.close;
+          // log.debug('Delaying Sell, percent diff is: ' + this.signals.fastMaDiff.toFixed(3))
+          // log.debug('Price is: ' + candle.close);
           this.signals.intermediateAdvice = 'short';
         }
       }
     } else if (this.signals.intermediateAdvice === 'long') {
       if (fastMaFast >= fastMaSlow) {
-        log.debug('Completing Delayed Buy, percent diff is: ' + this.signals.fastMaDiff.toFixed(3));
-        log.debug('Price is: ' + candle.close);
+        // log.debug('Completing Delayed Buy, percent diff is: ' + this.signals.fastMaDiff.toFixed(3));
+        let benefit = (100 - (candle.close / this.callPrice) * 100);
+        // log.debug('Price Benefit: ' + benefit);
+        this.delayedBuys.push(benefit);
         this.long();
       }
     } else if (this.signals.intermediateAdvice === 'short') {
       if (fastMaFast <= fastMaSlow) {
-        log.debug('Completing Delayed Sell, percent diff is: ' + this.signals.fastMaDiff.toFixed(3));
-        log.debug('Price is: ' + candle.close);
+        // log.debug('Completing Delayed Sell, percent diff is: ' + this.signals.fastMaDiff.toFixed(3));
+        // log.debug('Price is: ' + candle.close);
+        let benefit = (100 - (this.callPrice / candle.close) * 100);
+        // log.debug('Price Benefit: ' + benefit);
+        this.delayedSells.push(benefit);
         this.short();
       }
     }
@@ -362,9 +372,23 @@ var strat = {
     log.info('Finished in ' + str);
     log.info('====================================');
 
+    let buyBenefit = 0
+    for (i = 0; i < this.delayedBuys.length; i++) {
+      buyBenefit += this.delayedBuys[i];
+    }
+    buyBenefit = buyBenefit / this.delayedBuys.length;
+
+    let sellBenefit = 0
+    for (i = 0; i < this.delayedSells.length; i++) {
+      sellBenefit += this.delayedSells[i];
+    }
+    sellBenefit = buyBenefit / this.delayedSells.length;
+
     log.info('Max Diff: ' + this.diffMax);
     log.info('Min Diff: ' + this.diffMin);
     log.info('Trades Delayed: ' + this.tradesDelayed);
+    log.info(`Avg Sell Improvement: ${sellBenefit}`);
+    log.info(`Avg Buy Improvement: ${buyBenefit}`);
 
     // print stats and messages if debug
     if (this.debug) {
