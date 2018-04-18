@@ -48,13 +48,19 @@ var strat = {
     this.maFast = new SMA(this.settings.SMA_short)
 
     // RSI
-    this.BULL_RSI = new RSI({
-      interval: this.settings.BULL_RSI
-    });
+    this.BULL_RSI = [];
+    for (let i = 0; i < this.settings.BULL_RSI_Timeframe; i++) {
+      this.BULL_RSI[i] = new RSI({
+        interval: this.settings.BULL_RSI
+      });
+    }
 
-    this.BEAR_RSI = new RSI({
-      interval: this.settings.BEAR_RSI
-    });
+    this.BEAR_RSI = [];
+    for (let i = 0; i < this.settings.BEAR_RSI_Timeframe; i++) {
+      this.BEAR_RSI[i] = new RSI({
+        interval: this.settings.BEAR_RSI
+      });
+    }
 
     // ADX
     this.ADX = new ADX(this.settings.ADX);
@@ -178,19 +184,19 @@ var strat = {
       tf.SMA_Count++;
     }
 
-    if (tf.BULL_RSI_Count >= tf.BULL_RSI) {
-      this.BULL_RSI.update(candle);
+    if (tf.BULL_RSI_Count >= tf.BULL_RSI - 1) {
       tf.BULL_RSI_Count = 0;
     } else {
       tf.BULL_RSI_Count++;
     }
+    this.BULL_RSI[tf.BULL_RSI_Count].update(candle);
 
-    if (tf.BEAR_RSI_Count >= tf.BEAR_RSI) {
-      this.BEAR_RSI.update(candle);
+    if (tf.BEAR_RSI_Count >= tf.BEAR_RSI - 1) {
       tf.BEAR_RSI_Count = 0;
     } else {
       tf.BEAR_RSI_Count++;
     }
+    this.BEAR_RSI[tf.BEAR_RSI_Count].update(candle);
 
     if (tf.ADX_Count >= tf.ADX) {
       this.ADX.update(candle);
@@ -227,7 +233,7 @@ var strat = {
     // NOTE: maFast will always be under maSlow if maSlow can't be calculated
     if (maFast < maSlow) {
       market = 'bear';
-      rsi = this.BEAR_RSI.result;
+      rsi = this.BEAR_RSI[this.timeframes.BEAR_RSI_Count].result;
       let rsi_hi = this.settings.BEAR_RSI_high,
         rsi_low = this.settings.BEAR_RSI_low;
 
@@ -247,7 +253,7 @@ var strat = {
     // BULL TREND
     else {
       market = 'bull';
-      rsi = this.BULL_RSI.result;
+      rsi = this.BULL_RSI[this.timeframes.BULL_RSI_Count].result;
       let rsi_hi = this.settings.BULL_RSI_high,
         rsi_low = this.settings.BULL_RSI_low;
 

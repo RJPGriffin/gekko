@@ -12,14 +12,14 @@ fastMaDiff = 1
 BULL_RSI = 10
 BULL_RSI_high = 80
 BULL_RSI_low = 60
-
 BULL_RSI_Timeframe = 7
+
 
 BEAR_RSI = 15
 BEAR_RSI_high = 50
 BEAR_RSI_low = 20
-
 BEAR_RSI_Timeframe = 7
+
 
 # MODIFY RSI (depending on ADX)
 BULL_MOD_high = 5
