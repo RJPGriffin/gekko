@@ -8,6 +8,11 @@ fastPercentCheck = 5
 fastMaFast = 3
 fastMaDiff = 1
 
+#Stoploss Percentage
+stopLoss = 5
+#Enable Trailing Stop
+trailStop = 1
+
 # RSI BULL / BEAR
 BULL_RSI = 10
 BULL_RSI_high = 80

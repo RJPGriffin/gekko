@@ -12,6 +12,13 @@
 	Howto: Download + add to gekko/strategies/indicators
 */
 
+
+
+// TODO
+// Stoploss is not working properly - maybe not resetting?
+// TODO
+
+
 // req's
 var log = require('../core/log.js');
 var config = require('../core/util.js').getConfig();
@@ -29,7 +36,7 @@ var strat = {
     this.requiredHistory = config.tradingAdvisor.historySize;
 
     // debug? set to false to disable all logging/messages/stats (improves performance in backtests)
-    this.debug = false;
+    this.debug = true;
 
     // performance
     config.backtest.batchSize = 1000; // increase performance
@@ -102,6 +109,11 @@ var strat = {
       fastMaDiff: 0,
       intermediateAdvice: 'none'
     };
+
+    this.stopLoss = {
+      active: 'false',
+      price: 0
+    }
 
     this.resetTrend();
 
@@ -271,10 +283,31 @@ var strat = {
     // add adx low/high if debug
     if (this.debug) this.lowHigh(adx, 'adx');
 
+    if (this.settings.trailStop) {
+      this.trailStopUpdate(fastMaFast);
+    }
+
+    this.checkStop(fastMaFast); //Use SMA to trigger stoploss to help prevent false triggers
+
     this.advise(market, candle);
 
   }, // check()
 
+  trailStopUpdate: function(price) {
+    let newStop = price - (price * (this.settings.stopLoss / 100));
+    if (newStop > this.stopLoss.price) {
+      this.stopLoss.price = newStop;
+    }
+  },
+
+  checkStop: function(price) {
+    if (this.trend.direction === 'up' && price < this.stopLoss.price && this.stopLoss.active === 'false') {
+      if (this.debug) log.debug(`Stoploss Activated. Price is ${price.toFixed(4)}, Stoploss is ${this.stopLoss.price.toFixed(4)}`);
+      log.debug(`Calling short for Stoploss`);
+      this.short();
+      this.stopLoss.active = 'true';
+    }
+  },
 
   advise: function(market, candle) {
     let signalScore, val;
@@ -340,17 +373,21 @@ var strat = {
   /* LONG */
   long: function() {
     // log.info('Entering Long. Trend Direction is: ' + this.trend.direction);
-    if (this.trend.direction !== 'up') // new trend? (only act on new trends)
+    if (this.trend.direction !== 'up' && this.stopLoss.active === 'false') // new trend? (only act on new trends)
     {
       this.resetTrend();
       this.trend.direction = 'up';
+      let newStop = price - (price * (this.settings.stopLoss / 100));
+      if (this.debug) log.info(`Setting Stoploss. Price is ${price.toFixed(4)}, Stoploss is ${newStop.toFixed(4)}`);
+      // if (this.debug) log.info('Setting Stoploss.');
+      this.stopLoss.price = newStop;
       this.advice('long');
       if (this.debug) log.info('Going long');
     }
 
     if (this.debug) {
       this.trend.duration++;
-      log.info('Long since', this.trend.duration, 'candle(s)');
+      // log.info('Long since', this.trend.duration, 'candle(s)');
     }
   },
 
@@ -359,7 +396,11 @@ var strat = {
   short: function() {
     // new trend? (else do things)
     // log.info('Entering Short. Trend Direction is: ' + this.trend.direction);
-    if (this.trend.direction !== 'down') {
+    log.debug('Entering Short');
+    if (this.stopLoss.active === 'true') {
+      log.debug(`Resetting Stoploss`);
+      this.stopLoss.active = 'false';
+    } else if (this.trend.direction !== 'down') {
       this.resetTrend();
       this.trend.direction = 'down';
       this.advice('short');
@@ -368,7 +409,7 @@ var strat = {
 
     if (this.debug) {
       this.trend.duration++;
-      log.info('Short since', this.trend.duration, 'candle(s)');
+      // log.info('Short since', this.trend.duration, 'candle(s)');
     }
   },
 
