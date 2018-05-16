@@ -1,0 +1,39 @@
+threshold_buy_bear= 1
+threshold_buy_bull= 1
+threshold_sell_bear= -2
+threshold_sell_bull= -2
+NN_SMMA_Length= 4
+maFast= 30
+maSlow= 10
+price_buffer_len= 90
+stoploss_threshold= 100
+waitTime= 150
+
+# Define the Neural Netural function
+
+# Possible types  = 'fc' (fully connected neurons)
+# Possible activations 'sigmoid', 'tahn', 'relu', 'maxout'
+
+# Hidden Layer 1
+type_layer_1 = 'fc'
+activation_layer_1 = 'sigmoid'
+numb_nerurons_layer_1 = 2
+
+# Hidden Layer 2
+type_layer_2 = 'fc'
+activation_layer_2 = 'sigmoid'
+numb_nerurons_layer_2 = 4
+
+# Hidden Layer 3
+type_layer_3 = 'fc'
+activation_layer_3 = 'sigmoid'
+numb_nerurons_layer_3 = 2
+
+# Define the Neural Netural Trainer
+#try also: 'adagrad', 'sdg'
+method = 'adadelta'
+batch_size = 1
+learning_rate = 0.9 # only 'sdg'
+momentum = 0.9 # only with 'sdg'
+l1_decay = 0.001
+l2_decay = 0.001

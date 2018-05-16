@@ -5,7 +5,6 @@ var Indicator = function(settings) {
   this.input = 'candle';
   this.lastClose = null;
   this.weight = settings.interval;
-  console.log(`RSI Initiated with Interval: ${settings.interval}`);
   this.avgU = new SMMA(this.weight);
   this.avgD = new SMMA(this.weight);
   this.u = 0;

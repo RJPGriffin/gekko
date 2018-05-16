@@ -36,7 +36,7 @@ var strat = {
     this.requiredHistory = config.tradingAdvisor.historySize;
 
     // debug? set to false to disable all logging/messages/stats (improves performance in backtests)
-    this.debug = true;
+    this.debug = false;
 
     // performance
     config.backtest.batchSize = 1000; // increase performance
@@ -47,7 +47,7 @@ var strat = {
 
     //Short Term SMA/EMA
     this.addIndicator('fastMaFast', 'EMA', this.settings.fastMaFast);
-    this.addIndicator('fastMaSlow', 'SMA', this.settings.fastMaFast + this.settings.fastMaDiff);
+    this.addIndicator('fastMaSlow', 'EMA', this.settings.fastMaFast + this.settings.fastMaDiff);
 
     //Add Custom Timeframe indicators
     //SMA
@@ -306,6 +306,7 @@ var strat = {
       log.debug(`Calling short for Stoploss`);
       this.short();
       this.stopLoss.active = 'true';
+
     }
   },
 
@@ -321,9 +322,16 @@ var strat = {
       val = this.signals.bear;
     }
 
-    signalScore = val.RSI // + val.BB;
+    signalScore = val.RSI;
 
-    if (this.signals.intermediateAdvice === 'none') {
+    //Temporary Stoploss reset...
+    if (signalScore >= 1 && this.stopLoss.active === 'true') {
+      log.debug('Resettig stopLoss');
+      this.stopLoss.active = 'false';
+    }
+
+
+    if (this.signals.intermediateAdvice === 'none') { // If there are signals to delay
       if (signalScore <= -1) {
         // if (this.signals.fastMaDiff > this.settings.fastPercentCheck) {
         if (fastMaFast >= fastMaSlow) {
@@ -335,7 +343,7 @@ var strat = {
           // log.debug('Price is: ' + candle.close);
           this.signals.intermediateAdvice = 'long'
         }
-      } else if (signalScore >= 1) {
+      } else if (signalScore >= 1) { // Delaying the Sell
         // if (this.signals.fastMaDiff < this.settings.fastPercentCheck) {
         if (fastMaFast <= fastMaSlow) {
           this.short();
@@ -396,7 +404,7 @@ var strat = {
   short: function() {
     // new trend? (else do things)
     // log.info('Entering Short. Trend Direction is: ' + this.trend.direction);
-    log.debug('Entering Short');
+    // log.debug('Entering Short');
     if (this.stopLoss.active === 'true') {
       log.debug(`Resetting Stoploss`);
       this.stopLoss.active = 'false';
