@@ -77,3 +77,33 @@ add this to your init
 modify the code to fit your exchange and directory structure
 
 __________________________________________________________________________________________________________
+
+
+
+# SMA INDICATOR
+SMA_long = 500
+SMA_short = 20
+SMA_Timeframe = 80
+
+# RSI BULL / BEAR
+BULL_RSI = 12
+BULL_RSI_high = 49
+BULL_RSI_low = 36
+BULL_RSI_Timeframe = 70
+
+BEAR_RSI = 19
+BEAR_RSI_high = 54
+BEAR_RSI_low = 50
+BEAR_RSI_Timeframe = 7
+
+# MODIFY RSI (depending on ADX)
+BULL_MOD_high = 2
+BULL_MOD_low = -6
+BEAR_MOD_high = 9
+BEAR_MOD_low = -5
+
+# ADX
+ADX = 4
+ADX_high = 75
+ADX_low = 44
+ADX_Timeframe = 50
