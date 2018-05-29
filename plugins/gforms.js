@@ -17,7 +17,7 @@ var gforms = function(done) {
   //Track advice, linked to trades
   this.advicePrice = 0;
   this.adviceTime = 0;
-  this.question = [];
+  this.questions = [];
 
   var prefill = gfc.prefill;
   prefill = prefill.slice(34, prefill.length);
@@ -28,15 +28,25 @@ var gforms = function(done) {
 
   let count = 0;
 
-  while (count < 11) {
+  while (prefill.length > 8) {
     var start = prefill.search('entry') + 6;
     var end = prefill.search('=');
-    this.question.push(prefill.slice(start, end));
+    this.questions.push(prefill.slice(start, end));
     prefill = prefill.slice(end + 2, prefill.length);
     count++
   }
 
-  //TODO - Add check that above has actually worked.
+  if (this.questions.length > 11) {
+    log.info(`Warning: Check prefill link. 11 fields were expected, found ${count}. Plugin may still work as expected.`)
+  } else if (this.questions.length < 11) {
+    if (this.questions.length == 0) {
+      log.info(`Error parsing prefill link. 0 fields were found. Plugin will not work.`)
+    } else {
+      log.info(`Warning: Check prefill link. 11 fields were expected, found ${count}. Plugin may still work but will be missing data.`)
+    }
+  } else {
+    log.info(`Prefilled link parsed successfully. 11 fields found.`)
+  }
 
   this.done = done;
   this.setup();
@@ -63,21 +73,21 @@ gforms.prototype.processTrade = function(trade) {
   let exchange = config.watch.exchange;
   let tradeTime = Date.now();
 
-  let timeToComplete = (tradeTime - this.adviceTime) * 60000; //Difference in ms, converted to minutes
+  let timeToComplete = (tradeTime - this.adviceTime); //Difference in ms, converted to minutes
 
   //build up data string
   let dataString =
-    'entry.' + this.question[0] + '=' + gfc.botTag + '&' +
-    'entry.' + this.question[1] + '=' + exchange + '&' +
-    'entry.' + this.question[2] + '=' + currency + '&' +
-    'entry.' + this.question[3] + '=' + asset + '&' +
-    'entry.' + this.question[4] + '=' + trade.action + '&' +
-    'entry.' + this.question[5] + '=' + trade.portfolio.asset + '&' +
-    'entry.' + this.question[6] + '=' + trade.price + '&' +
-    'entry.' + this.question[7] + '=' + trade.portfolio.currency + '&' +
-    'entry.' + this.question[8] + '=' + trade.balance + '&' +
-    'entry.' + this.question[9] + '=' + this.advicePrice + '&' +
-    'entry.' + this.question[10] + '=' + timeToComplete;
+    'entry.' + this.questions[0] + '=' + gfc.botTag + '&' +
+    'entry.' + this.questions[1] + '=' + exchange + '&' +
+    'entry.' + this.questions[2] + '=' + currency + '&' +
+    'entry.' + this.questions[3] + '=' + asset + '&' +
+    'entry.' + this.questions[4] + '=' + trade.action + '&' +
+    'entry.' + this.questions[5] + '=' + trade.portfolio.asset + '&' +
+    'entry.' + this.questions[6] + '=' + trade.price + '&' +
+    'entry.' + this.questions[7] + '=' + trade.portfolio.currency + '&' +
+    'entry.' + this.questions[8] + '=' + trade.balance + '&' +
+    'entry.' + this.questions[9] + '=' + this.advicePrice + '&' +
+    'entry.' + this.questions[10] + '=' + timeToComplete;
 
   /*
   Index: (-1 for array index
