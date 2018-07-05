@@ -18,6 +18,7 @@ var config = require('../core/util.js').getConfig();
 var RSI = require('./indicators/RSI.js')
 var ADX = require('./indicators/ADX.js')
 var SMA = require('./indicators/SMA.js')
+const fs = require('fs');
 
 // strategy
 var strat = {
@@ -183,7 +184,7 @@ var strat = {
 
 
   /* CHECK */
-  check: function() {
+  check: function(candle) {
     // get all indicators
 
     var maSlow = this.maSlow.result,
@@ -225,6 +226,12 @@ var strat = {
 
     // add adx low/high if debug
     if (this.debug) this.lowHigh(adx, 'adx');
+
+    fs.appendFile('CSVs/' + this.settings.Asset + ':' + this.settings.Currency + ' ' + this.startTime + '.csv', candle.close + "," + rsi + "," + this.trend.direction + "\n", function(err) {
+      if (err) {
+        return console.log(err);
+      }
+    });
 
   }, // check()
 

@@ -14,6 +14,7 @@
 //    allowed to run. Realtime is during a live market watch and
 //    backtest is during a backtest.
 //
+//
 //  Optional parameters per plugin.
 //
 // description: text describing the plugin.
@@ -22,6 +23,9 @@
 // emits: events emitted by this plugin that other plugins can subscribe to.
 // path: fn that returns path of file of the plugin (overwrites `gekko/plugins/{slug}`)
 //    when given the configuration object (relative from `gekko/plugins/`).
+
+// greedy: if this plugin wants to subscribe to a lot of events, but can function
+//    properly when some events wont be emitted.
 var plugins = [{
     name: 'Candle writer',
     description: 'Store candles in a database',
@@ -37,7 +41,7 @@ var plugins = [{
     slug: 'tradingAdvisor',
     async: true,
     modes: ['realtime', 'backtest'],
-    emits: ['advice'],
+    emits: ['advice', 'stratWarmupCompleted', 'stratCandle', 'stratUpdate'],
     path: config => 'tradingAdvisor/tradingAdvisor.js',
   },
   {
@@ -62,17 +66,17 @@ var plugins = [{
       version: '0.24.0'
     }]
   },
-   {
-        name: 'Google Forms',
-        description: 'Logs Trades to Google Forms',
-        slug: 'gforms',
-        async: false,
-        modes: ['realtime'],
-        dependencies: [{
-          module: 'request',
-          version: '2.85.0'
-        }]
-      },
+  {
+    name: 'Google Forms',
+    description: 'Logs Trades to Google Forms',
+    slug: 'gforms',
+    async: false,
+    modes: ['realtime'],
+    dependencies: [{
+      module: 'request',
+      version: '2.85.0'
+    }]
+  },
   {
     name: 'XMPP bot',
     description: 'XMPP module lets you communicate with Gekko on Jabber.',
@@ -164,6 +168,7 @@ var plugins = [{
     slug: 'performanceAnalyzer',
     async: false,
     modes: ['realtime', 'backtest'],
+    emits: ['roundtrip', 'roundtripUpdate', 'performanceUpdate'],
     path: config => 'performanceAnalyzer/performanceAnalyzer.js',
   },
   {
@@ -211,6 +216,28 @@ var plugins = [{
     slug: 'ifttt',
     async: false,
     modes: ['realtime']
+  },
+  {
+    name: 'Event logger',
+    description: 'Logs all gekko events.',
+    slug: 'eventLogger',
+    async: false,
+    modes: ['realtime', 'backtest']
+  },
+  {
+    name: 'Backtest result export',
+    description: 'Exports the results of a gekko backtest',
+    slug: 'backtestResultExporter',
+    async: false,
+    modes: ['backtest']
+  },
+  {
+    name: 'Child to parent',
+    description: 'Relays events from the child to the parent process',
+    slug: 'childToParent',
+    async: false,
+    modes: ['realtime'],
+    greedy: true
   }
 ];
 

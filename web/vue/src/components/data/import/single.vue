@@ -1,4 +1,4 @@
-<template lang='jade'>
+<template lang='pug'>
   div.contain.my2
     div(v-if='data && !data.done')
       h2 Importing data..
@@ -38,7 +38,7 @@
         router-link(to='/backtest') backtest
         |  with your new data!
     div(v-if='!data').txt--center
-      h2 ERROR: Uknown import
+      h2 ERROR: Unknown import
       p 
         I don't know this import..
 </template>
