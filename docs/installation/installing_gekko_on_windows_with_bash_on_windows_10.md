@@ -1,5 +1,7 @@
 # Installing Gekko on Windows with bash on Windows 10
 
+*NOTE: unfortunately installing and managing Gekko is hard. You will need to touch the commandline and install a few developer tools. I am creating an official Gekko service called [Gekko Plus](https://gekkoplus.com/), it will NOT require any installation.*
+
 ### Note: 
 #### This guide is for advance users only! This is a temporary solution until [#708](https://github.com/askmike/gekko/issues/708) is implemented
 #### You must be running a 64-bit version of Windows 10 to use Bash on Windows 10
@@ -10,6 +12,7 @@
 
 - enable Bash on Windows 10
 - install nodejs
+- install git
 - download and install Gekko and its dependencies
 - edit the handle.js file
 - install the correct version of TA-lib
@@ -79,3 +82,7 @@ Your browser should automatically open with the UI. If it doesn't, manually brow
 ### Stopping Gekko
 
 In bash hold `ctrl` + `c`.
+
+### Updating Gekko
+
+See the [updating Gekko](./updating_gekko.md) doc.
