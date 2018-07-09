@@ -64,6 +64,7 @@ gforms.prototype.setup = function(done) {
 
 gforms.prototype.processCandle = function(candle, done) {
   this.currentPrice = candle.close;
+  log.info(`gForms: Process Candle`);
   done();
 }
 
@@ -71,7 +72,7 @@ gforms.prototype.processAdvice = function(advice) {
   //Get advice price and time
   this.advicePrice = advice.currentPrice;
   this.adviceTime = Date.now();
-  done();
+  log.info(`gForms: Process Advice`);
 };
 
 gforms.prototype.processTrade = function(processTradeCompleted) {
@@ -79,7 +80,7 @@ gforms.prototype.processTrade = function(processTradeCompleted) {
   let asset = config.watch.asset;
   let exchange = config.watch.exchange;
   let tradeTime = Date.now();
-
+log.info(`gForms: processTradeCompleted`)
   let timeToComplete = (tradeTime - this.adviceTime); //Difference in ms, converted to minutes
 
   //build up data string
@@ -116,7 +117,6 @@ gforms.prototype.processTrade = function(processTradeCompleted) {
 
   request.post(this.formUrl + dataString + '&submit=Submit', function(error, response) {});
 
-  done();
 
 };
 
