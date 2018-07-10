@@ -75,7 +75,7 @@ gforms.prototype.processAdvice = function(advice) {
   log.info(`gForms: Process Advice`);
 };
 
-gforms.prototype.processTrade = function(processTradeCompleted) {
+gforms.prototype.processTradeCompleted = function(trade) {
   let currency = config.watch.currency;
   let asset = config.watch.asset;
   let exchange = config.watch.exchange;
