@@ -7,7 +7,7 @@ const retry = require('../exchangeUtils').retry;
 
 const Binance = require('binance');
 
-var Trader = function(config) {
+const Trader = function(config) {
   _.bindAll(this, [
     'roundAmount',
     'roundPrice'
@@ -37,21 +37,24 @@ var Trader = function(config) {
   });
 };
 
-var retryCritical = {
-  retries: 10,
-  factor: 1.2,
-  minTimeout: 1 * 1000,
-  maxTimeout: 30 * 1000
-};
+const recoverableErrors = [
+  'SOCKETTIMEDOUT',
+  'TIMEDOUT',
+  'CONNRESET',
+  'CONNREFUSED',
+  'NOTFOUND',
+  'Error -1021',
+  'Response code 429',
+  'Response code 5',
+  'ETIMEDOUT'
+];
 
-var retryForever = {
-  forever: true,
-  factor: 1.2,
-  minTimeout: 10 * 1000,
-  maxTimeout: 30 * 1000
-};
+const includes = (str, list) => {
+  if(!_.isString(str))
+    return false;
 
-var recoverableErrors = new RegExp(/(SOCKETTIMEDOUT|TIMEDOUT|CONNRESET|CONNREFUSED|NOTFOUND|Error -1021|Response code 429|Response code 5|ETIMEDOUT)/);
+  return _.some(list, item => str.includes(item));
+}
 
 Trader.prototype.processError = function(funcName, error) {
   if (!error) return undefined;
@@ -67,6 +70,18 @@ Trader.prototype.handleResponse = function(funcName, callback) {
   return (error, body) => {
     if (body && body.code) {
       error = new Error(`Error ${body.code}: ${body.msg}`);
+    }
+
+    if(error) {
+      if(_.isString(error)) {
+        error = new Error(error);
+      }
+
+      if(includes(error.message, recoverableErrors)) {
+        error.notFatal = true;
+      }
+
+      return callback(error);
     }
 
     return callback(this.processError(funcName, error), body);
@@ -110,7 +125,7 @@ Trader.prototype.getTrades = function(since, callback, descending) {
   }
 
   const fetch = cb => this.binance.aggTrades(reqData, this.handleResponse('getTrades', cb));
-  retry(retryForever, fetch, processResults);
+  retry(undefined, fetch, processResults);
 };
 
 Trader.prototype.getPortfolio = function(callback) {
@@ -140,7 +155,7 @@ Trader.prototype.getPortfolio = function(callback) {
   };
 
   const fetch = cb => this.binance.account({}, this.handleResponse('getPortfolio', cb));
-  retry(retryForever, fetch, setBalance);
+  retry(undefined, fetch, setBalance);
 };
 
 // This uses the base maker fee (0.1%), and does not account for BNB discounts
@@ -168,7 +183,7 @@ Trader.prototype.getTicker = function(callback) {
   };
 
   const handler = cb => this.binance._makeRequest({}, this.handleResponse('getTicker', cb), 'api/v1/ticker/allBookTickers');
-  retry(retryForever, handler, setTicker);
+  retry(undefined, handler, setTicker);
 };
 
 // Effectively counts the number of decimal places, so 0.001 or 0.234 results in 3
@@ -270,7 +285,7 @@ Trader.prototype.addOrder = function(tradeType, amount, price, callback) {
   };
 
   const handler = cb => this.binance.newOrder(reqData, this.handleResponse('addOrder', cb));
-  retry(retryCritical, handler, setOrder);
+  retry(undefined, handler, setOrder);
 };
 
 Trader.prototype.getOrder = function(order, callback) {
@@ -335,7 +350,7 @@ Trader.prototype.getOrder = function(order, callback) {
   };
 
   const handler = cb => this.binance.myTrades(reqData, this.handleResponse('getOrder', cb));
-  retry(retryCritical, handler, get);
+  retry(undefined, handler, get);
 };
 
 Trader.prototype.buy = function(amount, price, callback) {
@@ -380,7 +395,7 @@ Trader.prototype.checkOrder = function(order, callback) {
   };
 
   const fetcher = cb => this.binance.queryOrder(reqData, this.handleResponse('checkOrder', cb));
-  retry(retryCritical, fetcher, check);
+  retry(undefined, fetcher, check);
 };
 
 Trader.prototype.cancelOrder = function(order, callback) {
@@ -388,7 +403,7 @@ Trader.prototype.cancelOrder = function(order, callback) {
   const cancel = (err, data) => {
     if (err) {
       // when the order was filled
-      if(data && data.msg === 'UNKNOWN_ORDER') {
+      if(err.message.includes('UNKNOWN_ORDER')) {
         return callback(undefined, true);
       }
       return callback(err);
@@ -402,7 +417,7 @@ Trader.prototype.cancelOrder = function(order, callback) {
   };
 
   const fetcher = cb => this.binance.cancelOrder(reqData, this.handleResponse('cancelOrder', cb));
-  retry(retryForever, fetcher, cancel);
+  retry(undefined, fetcher, cancel);
 };
 
 Trader.getCapabilities = function() {
