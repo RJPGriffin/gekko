@@ -82,7 +82,7 @@ Pushbullet.prototype.processCandle = function(candle, done) {
 Pushbullet.prototype.processAdvice = function(advice) {
   if (advice.recommendation == "soft" && pushbulletConfig.muteSoft) return;
 
-  this.advicePrice = advice.candle.close;
+  this.advicePrice = this.price;
   this.adviceTime = moment();
 
   if (pushbulletConfig.sendOnAdvice) {
@@ -104,7 +104,7 @@ Pushbullet.prototype.processAdvice = function(advice) {
   }
 };
 
-Pushbullet.prototype.processTrade = function(trade) {
+Pushbullet.prototype.processTradeCompleted = function(trade) {
   if (pushbulletConfig.sendOnTrade) {
     var slip;
     //Slip direction is opposite for buy and sell
