@@ -95,7 +95,7 @@ Pushbullet.prototype.processAdvice = function(advice) {
       '.\n\nThe current ',
       config.watch.asset,
       ' price is ',
-      advice.candle.close
+      this.advicePrice
     ].join('');
 
     var subject = pushbulletConfig.tag + ' New advice: go ' + advice.recommendation;
