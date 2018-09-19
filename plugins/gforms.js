@@ -64,7 +64,7 @@ gforms.prototype.setup = function(done) {
 
 gforms.prototype.processCandle = function(candle, done) {
   this.currentPrice = candle.close;
-  log.info(`gForms: Process Candle`);
+  // log.info(`gForms: Process Candle`);
   done();
 }
 
