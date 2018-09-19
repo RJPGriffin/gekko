@@ -49,12 +49,12 @@ var Base = function(settings) {
 
   this.asyncIndicatorRunner = new AsyncIndicatorRunner();
 
-  this._prevAdvice;
+  this._currentDirection;
 
   // make sure we have all methods
   _.each(['init', 'check'], function(fn) {
     if(!this[fn])
-      util.die('No ' + fn + ' function in this trading method found.')
+      util.die('No ' + fn + ' function in this strategy found.')
   }, this);
 
   if(!this.update)
@@ -141,7 +141,7 @@ Base.prototype.propogateTick = function(candle) {
     // whether candle start time is > startTime
     var isPremature = false;
 
-    if(mode === 'realtime'){
+    if(mode === 'realtime') {
       const startTimeMinusCandleSize = startTime
         .clone()
         .subtract(this.tradingAdvisor.candleSize, "minutes");
@@ -175,6 +175,18 @@ Base.prototype.propogateTick = function(candle) {
   _.each(this.indicators, (indicator, name) => {
     indicators[name] = indicator.result;
   });
+  
+  _.each(this.tulipIndicators, (indicator, name) => {
+    indicators[name] = indicator.result.result
+      ? indicator.result.result
+      : indicator.result;
+  });
+
+  _.each(this.talibIndicators, (indicator, name) => {
+    indicators[name] = indicator.result.outReal
+      ? indicator.result.outReal
+      : indicator.result;
+  });
 
   this.emit('stratUpdate', {
     date: candle.start.clone(),
@@ -188,6 +200,17 @@ Base.prototype.propogateTick = function(candle) {
 }
 
 Base.prototype.processTrade = function(trade) {
+  if(
+    this._pendingTriggerAdvice &&
+    trade.action === 'sell' &&
+    this._pendingTriggerAdvice === trade.adviceId
+  ) {
+    // This trade came from a trigger of the previous advice,
+    // update stored direction
+    this._currentDirection = 'short';
+    this._pendingTriggerAdvice = null;
+  }
+
   this.onTrade(trade);
 }
 
@@ -211,21 +234,71 @@ Base.prototype.addIndicator = function(name, type, parameters) {
   // some indicators need a price stream, others need full candles
 }
 
-Base.prototype.advice = function(newPosition) {
+Base.prototype.advice = function(newDirection) {
   // ignore legacy soft advice
-  if(!newPosition)
+  if(!newDirection) {
     return;
+  }
 
-  // ignore if advice equals previous advice
-  if(newPosition === this._prevAdvice)
+  let trigger;
+  if(_.isObject(newDirection)) {
+    if(!_.isString(newDirection.direction)) {
+      log.error('Strategy emitted unparsable advice:', newDirection);
+      return;
+    }
+
+    if(newDirection.direction === this._currentDirection) {
+      return;
+    }
+
+    if(_.isObject(newDirection.trigger)) {
+      if(newDirection.direction !== 'long') {
+        log.warn(
+          'Strategy adviced a stop on not long, this is not supported.',
+          'As such the stop is ignored'
+        );
+      } else {
+
+        // the trigger is implemented in a trader
+        trigger = newDirection.trigger;
+
+        if(trigger.trailPercentage && !trigger.trailValue) {
+          trigger.trailValue = trigger.trailPercentage / 100 * this.candle.close;
+          log.info('[StratRunner] Trailing stop trail value specified as percentage, setting to:', trigger.trailValue);
+        }
+      }
+    }
+
+    newDirection = newDirection.direction;
+  }
+
+  if(newDirection === this._currentDirection) {
     return;
+  }
 
-  this._prevAdvice = newPosition;
+  if(newDirection === 'short' && this._pendingTriggerAdvice) {
+    this._pendingTriggerAdvice = null;
+  }
 
-  this.emit('advice', {
-    id: 'advice-' + (++this.propogatedAdvices),
-    recommendation: newPosition
-  });
+  this._currentDirection = newDirection;
+
+  this.propogatedAdvices++;
+
+  const advice = {
+    id: 'advice-' + this.propogatedAdvices,
+    recommendation: newDirection
+  };
+
+  if(trigger) {
+    advice.trigger = trigger;
+    this._pendingTriggerAdvice = 'advice-' + this.propogatedAdvices;
+  } else {
+    this._pendingTriggerAdvice = null;
+  }
+
+  this.emit('advice', advice);
+
+  return this.propogatedAdvices;
 }
 
 Base.prototype.notify = function(content) {
@@ -236,7 +309,7 @@ Base.prototype.notify = function(content) {
 }
 
 Base.prototype.finish = function(done) {
-  // Because the trading method might be async we need
+  // Because the strategy might be async we need
   // to be sure we only stop after all candles are
   // processed.
   if(!this.asyncTick) {

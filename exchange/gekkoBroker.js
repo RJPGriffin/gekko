@@ -14,7 +14,12 @@ const errors = require('./exchangeErrors');
 const Portfolio = require('./portfolioManager');
 // const Market = require('./market');
 const orders = require('./orders');
-const bindAll = require('./exchangeUtils').bindAll;
+const Trigger = require('./trigger');
+const exchangeUtils = require('./exchangeUtils');
+const bindAll = exchangeUtils.bindAll;
+const isValidOrder = exchangeUtils.isValidOrder;
+
+
 
 class Broker {
   constructor(config) {
@@ -22,16 +27,12 @@ class Broker {
 
     if(config.private) {
       if(this.cantTrade()) {
-        throw this.cantTrade();
+        throw new Error(this.cantTrade());
       }
     } else {
       if(this.cantMonitor()) {
-        throw this.cantMonitor();
+        throw new Error(this.cantMonitor());
       }
-    }
-
-    if(config.private && this.cantTrade()) {
-      throw this.cantTrade();
     }
 
     this.orders = {
@@ -79,8 +80,9 @@ class Broker {
       return;
     }
 
-    if(this.cantTrade())
+    if(this.cantTrade()) {
       throw new errors.ExchangeError(this.cantTrade());
+    }
 
     this.syncPrivateData();
   }
@@ -116,6 +118,15 @@ class Broker {
     });
   }
 
+  isValidOrder(amount, price) {
+    return isValidOrder({
+      market: this.marketConfig,
+      api: this.api,
+      amount,
+      price
+    });
+  }
+
   createOrder(type, side, amount, parameters, handler) {
     if(!this.config.private)
       throw new Error('Client not authenticated');
@@ -126,16 +137,17 @@ class Broker {
     if(!orders[type])
       throw new Error('Unknown order type');
 
-    const order = new orders[type](this.api);
-
-    this.orders.open.push(order);
+    const order = new orders[type]({
+      api: this.api,
+      marketConfig: this.marketConfig,
+      capabilities: this.capabilities
+    });
 
     // todo: figure out a smarter generic way
     this.syncPrivateData(() => {
       order.setData({
         balances: this.portfolio.balances,
         ticker: this.ticker,
-        market: this.marketConfig
       });
 
       order.create(side, amount, parameters);
@@ -147,6 +159,15 @@ class Broker {
     });
 
     return order;
+  }
+
+  createTrigger({type, onTrigger, props}) {
+    return new Trigger({
+      api: this.api,
+      type,
+      onTrigger,
+      props
+    });
   }
 }
 

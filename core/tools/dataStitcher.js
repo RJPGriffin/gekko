@@ -18,6 +18,7 @@ Stitcher.prototype.ago = function(ts) {
 }
 
 Stitcher.prototype.verifyExchange = function() {
+  require(dirs.gekko + 'exchange/dependencyCheck');
   const exchangeChecker = require(dirs.gekko + 'exchange/exchangeChecker');
   const slug = config.watch.exchange.toLowerCase();
   let exchange;
@@ -197,6 +198,10 @@ Stitcher.prototype.checkExchangeTrades = function(since, next) {
 
   var watcher = new DataProvider(exchangeConfig);
   watcher.getTrades(since, function(e, d) {
+    if(e) {
+      util.die(e.message);
+    }
+
     if(_.isEmpty(d))
       return util.die(
         `Gekko tried to retrieve data since ${since.format('YYYY-MM-DD HH:mm:ss')}, however
@@ -218,6 +223,7 @@ Stitcher.prototype.seedLocalData = function(from, to, next) {
     });
 
     this.batcher.write(rows);
+    this.batcher.flush();
     this.reader.close();
     next();
 

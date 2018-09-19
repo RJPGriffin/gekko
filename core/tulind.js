@@ -32,13 +32,15 @@ var verifyParams = (methodName, params) => {
     var requiredParams = methods[methodName].requires;
 
     _.each(requiredParams, paramName => {
-        if(!_.has(params, paramName))
-            throw tulindError + methodName + ' requires ' + paramName + '.';
+        if(!_.has(params, paramName)) {
+            throw new Error(tulindError + methodName + ' requires ' + paramName + '.');
+        }
 
         var val = params[paramName];
 
-        if(!_.isNumber(val))
-            throw tulindError + paramName + ' needs to be a number';
+        if(!_.isNumber(val)) {
+            throw new Error(tulindError + paramName + ' needs to be a number');
+        }
     });
 }
 
@@ -695,6 +697,20 @@ methods.sma = {
 
         return (data, callback) => execute(callback, {
             indicator: tulind.indicators.sma,
+            inputs: [data.close],
+            options: [params.optInTimePeriod],
+            results: ['result'],
+        });
+    }
+}
+
+methods.stddev = {
+    requires: ['optInTimePeriod'],
+    create: (params) => {
+        verifyParams('stddev', params);
+
+        return (data, callback) => execute(callback, {
+            indicator: tulind.indicators.stddev,
             inputs: [data.close],
             options: [params.optInTimePeriod],
             results: ['result'],

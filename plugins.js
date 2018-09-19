@@ -41,7 +41,7 @@ var plugins = [{
     slug: 'tradingAdvisor',
     async: true,
     modes: ['realtime', 'backtest'],
-    emits: ['advice', 'stratWarmupCompleted', 'stratCandle', 'stratUpdate'],
+    emits: true,
     path: config => 'tradingAdvisor/tradingAdvisor.js',
   },
   {
@@ -139,7 +139,7 @@ var plugins = [{
     slug: 'trader',
     async: true,
     modes: ['realtime'],
-    emits: ['portfolioUpdate', 'trade'],
+    emits: true,
     path: config => 'trader/trader.js',
   },
   {
@@ -148,7 +148,7 @@ var plugins = [{
     slug: 'paperTrader',
     async: false,
     modes: ['realtime', 'backtest'],
-    emits: ['portfolioUpdate', 'trade'],
+    emits: true,
     path: config => 'paperTrader/paperTrader.js',
   },
   {
@@ -157,7 +157,7 @@ var plugins = [{
     slug: 'performanceAnalyzer',
     async: false,
     modes: ['realtime', 'backtest'],
-    emits: ['roundtrip', 'roundtripUpdate', 'performanceUpdate'],
+    emits: true,
     path: config => 'performanceAnalyzer/performanceAnalyzer.js',
   },
   {
@@ -176,7 +176,11 @@ var plugins = [{
     description: 'Sends advice to pushbullet.',
     slug: 'pushbullet',
     async: false,
-    modes: ['realtime']
+    modes: ['realtime'],
+    dependencies: [{
+      module: 'pushbullet',
+      version: '1.4.3'
+    }]
   },
   {
     name: 'Kodi',
@@ -190,14 +194,22 @@ var plugins = [{
     description: 'Sends trades to twitter.',
     slug: 'twitter',
     async: false,
-    modes: ['realtime']
+    modes: ['realtime'],
+    dependencies: [{
+      module: 'twitter',
+      version: '1.7.1'
+    }]
   },
   {
     name: 'Slack',
     description: 'Sends trades to slack channel.',
     slug: 'slack',
     async: false,
-    modes: ['realtime']
+    modes: ['realtime'],
+    dependencies: [{
+      module: '@slack/client',
+      version: '3.13.0'
+    }]
   },
   {
     name: 'IFTTT',
@@ -211,7 +223,8 @@ var plugins = [{
     description: 'Logs all gekko events.',
     slug: 'eventLogger',
     async: false,
-    modes: ['realtime', 'backtest']
+    modes: ['realtime', 'backtest'],
+    greedy: true
   },
   {
     name: 'Backtest result export',

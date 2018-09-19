@@ -5,7 +5,10 @@ const marketData = require('./coinfalcon-markets.json');
 const CoinFalcon = require('coinfalcon');
 
 var Trader = function(config) {
-  _.bindAll(this);
+  _.bindAll(this, [
+    'roundAmount',
+    'roundPrice'
+  ]);
 
   if (_.isObject(config)) {
     this.key = config.key;
@@ -37,6 +40,7 @@ const recoverableErrors = [
   'SOCKETTIMEDOUT',
   'TIMEDOUT',
   'CONNRESET',
+  'ECONNRESET',
   'CONNREFUSED',
   'NOTFOUND',
   '429',
@@ -49,7 +53,13 @@ const recoverableErrors = [
   '408',
   // "The timestamp 1527996378 is invalid, current timestamp is 1527996441."
   'is invalid, current timestamp is',
-  'EHOSTUNREACH'
+  'EHOSTUNREACH',
+  // https://github.com/askmike/gekko/issues/2407
+  'We are fixing a few issues, be back shortly.',
+  'Client network socket disconnected before secure TLS connection was established',
+  'socket hang up',
+  // getaddrinfo EAI_AGAIN coinfalcon.com coinfalcon.com:443
+  'EAI_AGAIN'
 ];
 
 Trader.prototype.processResponse = function(method, args, next) {
@@ -60,7 +70,7 @@ Trader.prototype.processResponse = function(method, args, next) {
     if(includes(err.message, recoverableErrors))
       return this.retry(method, args);
 
-    console.log(new Date, '[cf] big error!', err);
+    console.log(new Date, '[cf] big error!', err.message);
 
     return next(err);
   }
@@ -90,8 +100,6 @@ Trader.prototype.retry = function(method, args) {
 
   // run the failed method again with the same arguments after wait
   setTimeout(() => {
-    console.log('cf retry..');
-    console.log(args);
     method.apply(this, args);
   }, wait);
 };
@@ -164,18 +172,25 @@ const round = function(number, precision) {
   return roundedTempNumber / factor;
 };
 
+// ticksize 0.01 will yield: 2
+Trader.prototype.getPrecision = function(tickSize) {
+  if (!isFinite(tickSize)) {
+    return 0;
+  }
+  var e = 1;
+  var p = 0;
+  while (Math.round(tickSize * e) / e !== tickSize) {
+    e *= 10; p++;
+  }
+  return p;
+};
+
 Trader.prototype.roundAmount = function(amount) {
-  return round(amount, 8);
+  return round(amount, this.getPrecision(this.market.minimalOrder.amount));
 }
 
 Trader.prototype.roundPrice = function(price) {
-  let rounding;
-
-  if(this.pair.includes('EUR'))
-    rounding = 2;
-  else
-    rounding = 5;
-  return round(price, rounding);
+  return round(price, this.getPrecision(this.market.minimalOrder.price));
 }
 
 Trader.prototype.outbidPrice = function(price, isUp) {
@@ -240,14 +255,37 @@ Trader.prototype.cancelOrder = function(order, callback) {
   const args = _.toArray(arguments);
 
   const handle = this.processResponse(this.cancelOrder, args, (err, res) => {
+
     if(err) {
       if(err.message.includes('has wrong status.')) {
-        return callback(undefined, true);
+
+        // see https://github.com/askmike/gekko/issues/2440
+        console.log('CANCELFIX', order, 'order has wrong status...');
+        return setTimeout(() => {
+          this.checkOrder(order, (err, res) => {
+            console.log('CANCELFIX', order, 'checked it:', res);
+
+            if(err) {
+              return callback(err);
+            }
+
+            if(!res.open) {
+              return callback(undefined, true);
+            }
+
+            return setTimeout(
+              () => this.cancelOrder(order, callback),
+              this.interval
+            );
+          });
+        }, this.interval);
       }
       return callback(err);
     }
 
-    callback(undefined, false);
+    callback(undefined, false, {
+      filled: res.data.size_filled
+    });
   });
 
   this.coinfalcon.delete('user/orders/' + order).then(handle.success).catch(handle.failure);

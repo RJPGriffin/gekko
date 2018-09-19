@@ -3,14 +3,18 @@ const _ = require('lodash');
 
 const Errors = require('../exchangeErrors');
 const marketData = require('./binance-markets.json');
-const retry = require('../exchangeUtils').retry;
+const exchangeUtils = require('../exchangeUtils');
+const retry = exchangeUtils.retry;
+const scientificToDecimal = exchangeUtils.scientificToDecimal;
 
 const Binance = require('binance');
 
 const Trader = function(config) {
   _.bindAll(this, [
     'roundAmount',
-    'roundPrice'
+    'roundPrice',
+    'isValidPrice',
+    'isValidLot'
   ]);
 
   if (_.isObject(config)) {
@@ -18,6 +22,18 @@ const Trader = function(config) {
     this.secret = config.secret;
     this.currency = config.currency.toUpperCase();
     this.asset = config.asset.toUpperCase();
+  }
+
+  let recvWindow = 6000;
+  if(config.optimizedConnection) {
+    // there is a bug in binance's API
+    // where some requests randomly take
+    // over a second, this tells binance
+    // to bail out after 500ms.
+    //
+    // As discussed in binance API
+    // telegram. TODO add link.
+    recvWindow = 500;
   }
 
   this.pair = this.asset + this.currency;
@@ -31,10 +47,28 @@ const Trader = function(config) {
     key: this.key,
     secret: this.secret,
     timeout: 15000,
-    recvWindow: 60000, // suggested by binance
+    recvWindow,
     disableBeautification: false,
     handleDrift: true,
   });
+
+  if(config.key && config.secret) {
+    // Note non standard func:
+    //
+    // On binance we might pay fees in BNB
+    // if we do we CANNOT calculate feePercent
+    // since we don't track BNB price (when we
+    // are not trading on a BNB market).
+    //
+    // Though we can deduce feePercent based
+    // on user fee tracked through `this.getFee`.
+    // Set default here, overwrite in getFee.
+    this.fee = 0.1;
+    // Set the proper fee asap.
+    this.getFee(_.noop);
+
+    this.oldOrder = false;
+  }
 };
 
 const recoverableErrors = [
@@ -46,7 +80,12 @@ const recoverableErrors = [
   'Error -1021',
   'Response code 429',
   'Response code 5',
-  'ETIMEDOUT'
+  'Response code 403',
+  'ETIMEDOUT',
+  'EHOSTUNREACH',
+  // getaddrinfo EAI_AGAIN api.binance.com api.binance.com:443
+  'EAI_AGAIN',
+  'ENETUNREACH'
 ];
 
 const includes = (str, list) => {
@@ -55,16 +94,6 @@ const includes = (str, list) => {
 
   return _.some(list, item => str.includes(item));
 }
-
-Trader.prototype.processError = function(funcName, error) {
-  if (!error) return undefined;
-
-  if (!error.message || !error.message.match(recoverableErrors)) {
-    return new Errors.AbortError('[binance.js] ' + error.message || error);
-  }
-
-  return new Errors.RetryError('[binance.js] ' + error.message || error);
-};
 
 Trader.prototype.handleResponse = function(funcName, callback) {
   return (error, body) => {
@@ -81,10 +110,26 @@ Trader.prototype.handleResponse = function(funcName, callback) {
         error.notFatal = true;
       }
 
+      if(funcName === 'cancelOrder' && error.message.includes('UNKNOWN_ORDER')) {
+        // order got filled in full before it could be
+        // cancelled, meaning it was NOT cancelled.
+        return callback(false, {filled: true});
+      }
+
+      if(funcName === 'checkOrder' && error.message.includes('Order does not exist.')) {
+        // order got filled in full before it could be
+        // cancelled, meaning it was NOT cancelled.
+        return callback(false, {filled: true});
+      }
+
+      if(funcName === 'addOrder' && error.message.includes('Account has insufficient balance')) {
+        error.type = 'insufficientFunds';
+      }
+
       return callback(error);
     }
 
-    return callback(this.processError(funcName, error), body);
+    return callback(undefined, body);
   }
 };
 
@@ -158,10 +203,25 @@ Trader.prototype.getPortfolio = function(callback) {
   retry(undefined, fetch, setBalance);
 };
 
-// This uses the base maker fee (0.1%), and does not account for BNB discounts
 Trader.prototype.getFee = function(callback) {
-  const makerFee = 0.1;
-  callback(undefined, makerFee / 100);
+
+  // binance does NOT tell us whether the user is using BNB to pay
+  // for fees, which means a discount (effectively lower fees)
+  const handle = (err, data) => {
+    if(err)  {
+      return callback(err);
+    }
+
+    const basepoints = data.makerCommission;
+
+    // note non standard func, see constructor
+    this.fee = basepoints / 100;
+
+    callback(undefined, basepoints / 100);
+  }
+
+  const fetch = cb => this.binance.account({}, this.handleResponse('getFee', cb));
+  retry(undefined, fetch, handle);
 };
 
 Trader.prototype.getTicker = function(callback) {
@@ -206,36 +266,10 @@ Trader.prototype.round = function(amount, tickSize) {
   amount /= precision;
 
   // https://gist.github.com/jiggzson/b5f489af9ad931e3d186
-  amount = this.scientificToDecimal(amount);
+  amount = scientificToDecimal(amount);
 
   return amount;
 };
-
-// https://gist.github.com/jiggzson/b5f489af9ad931e3d186
-Trader.prototype.scientificToDecimal = function(num) {
-  if(/\d+\.?\d*e[\+\-]*\d+/i.test(num)) {
-    const zero = '0';
-    const parts = String(num).toLowerCase().split('e'); // split into coeff and exponent
-    const e = parts.pop(); // store the exponential part
-    const l = Math.abs(e); // get the number of zeros
-    const sign = e/l;
-    const coeff_array = parts[0].split('.');
-    if(sign === -1) {
-      num = zero + '.' + new Array(l).join(zero) + coeff_array.join('');
-    } else {
-      const dec = coeff_array[1];
-      if(dec) {
-        l = l - dec.length;
-      }
-      num = coeff_array.join('') + new Array(l+1).join(zero);
-    }
-  } else {
-    // make sure we always cast to string
-    num = num + '';
-  }
-
-  return num;
-}
 
 Trader.prototype.roundAmount = function(amount) {
   return this.round(amount, this.market.minimalOrder.amount);
@@ -250,6 +284,7 @@ Trader.prototype.isValidPrice = function(price) {
 }
 
 Trader.prototype.isValidLot = function(price, amount) {
+  console.log('isValidLot', this.market.minimalOrder.order, amount * price >= this.market.minimalOrder.order)
   return amount * price >= this.market.minimalOrder.order;
 }
 
@@ -298,12 +333,17 @@ Trader.prototype.getOrder = function(order, callback) {
 
     const fees = {};
 
+    if(!data.length) {
+      return callback(new Error('Binance did not return any trades'));
+    }
+
     const trades = _.filter(data, t => {
       // note: the API returns a string after creating
       return t.orderId == order;
     });
 
     if(!trades.length) {
+      console.log('cannot find trades!', { order, list: data.map(t => t.orderId) });
       return callback(new Error('Trades not found'));
     }
 
@@ -321,23 +361,23 @@ Trader.prototype.getOrder = function(order, callback) {
     let feePercent;
     if(_.keys(fees).length === 1) {
       if(fees.BNB && this.asset !== 'BNB' && this.currency !== 'BNB') {
-        // we paid fees in BNB, right now that means the fee is always 5 basepoints.
-        // we cannot calculate since we do not have the BNB rate.
-        feePercent = 0.05;
+        // we paid fees in BNB, right now that means the fee is always 75%
+        // of base fee. We cannot calculate since we do not have the BNB rate.
+        feePercent = this.fee * 0.75;
       } else {
         if(fees[this.asset]) {
           feePercent = fees[this.asset] / amount * 100;
         } else if(fees.currency) {
           feePercent = fees[this.currency] / price / amount * 100;
         } else {
-          // assume base fee of 10 basepoints
-          feePercent = 0.1;
+          // use user fee of 10 basepoints
+          feePercent = this.fee;
         }
       }
     } else {
       // we paid fees in multiple currencies?
-      // assume base fee of 10 basepoints
-      feePercent = 0.1;
+      // assume user fee
+      feePercent = this.fee;
     }
 
     callback(undefined, { price, amount, date, fees, feePercent });
@@ -346,7 +386,7 @@ Trader.prototype.getOrder = function(order, callback) {
   const reqData = {
     symbol: this.pair,
     // if this order was not part of the last 500 trades we won't find it..
-    limit: 500,
+    limit: 1000,
   };
 
   const handler = cb => this.binance.myTrades(reqData, this.handleResponse('getOrder', cb));
@@ -364,7 +404,14 @@ Trader.prototype.sell = function(amount, price, callback) {
 Trader.prototype.checkOrder = function(order, callback) {
 
   const check = (err, data) => {
-    if (err) return callback(err);
+    if (err) {
+      return callback(err);
+    }
+
+    if(data.filled === true) {
+      // binance responsed with order not found
+      return callback(undefined, { executed: true, open: false });
+    }
 
     const status = data.status;
 
@@ -399,16 +446,22 @@ Trader.prototype.checkOrder = function(order, callback) {
 };
 
 Trader.prototype.cancelOrder = function(order, callback) {
-  // callback for cancelOrder should be true if the order was already filled, otherwise false
+
   const cancel = (err, data) => {
-    if (err) {
-      // when the order was filled
-      if(err.message.includes('UNKNOWN_ORDER')) {
-        return callback(undefined, true);
-      }
+
+    this.oldOrder = order;
+
+    if(err) {
+      if(err.message.contains(''))
+
       return callback(err);
     }
-    callback(undefined, false);
+
+    if(data && data.filled) {
+      return callback(undefined, true);
+    }
+
+    return callback(undefined, false);
   };
 
   let reqData = {
@@ -432,7 +485,8 @@ Trader.getCapabilities = function() {
     providesFullHistory: true,
     tid: 'tid',
     tradable: true,
-    gekkoBroker: 0.6
+    gekkoBroker: 0.6,
+    limitedCancelConfirmation: true
   };
 };
 

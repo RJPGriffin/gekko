@@ -1,92 +1,95 @@
 const _ = require('lodash');
 const fs = require('fs');
-const pg = require('pg');
 
-var util = require('../../core/util.js');
-var config = util.getConfig();
-var dirs = util.dirs();
+const util = require('../../core/util.js');
+const config = util.getConfig();
+const dirs = util.dirs();
 
-var log = require(util.dirs().core + 'log');
-var postgresUtil = require('./util');
+const log = require(util.dirs().core + 'log');
+const postgresUtil = require('./util');
 
-var adapter = config.postgresql;
+const adapter = config.postgresql;
 
 // verify the correct dependencies are installed
-var pluginHelper = require(dirs.core + 'pluginUtil');
-var pluginMock = {
+const pluginHelper = require(dirs.core + 'pluginUtil');
+const pluginMock = {
   slug: 'postgresql adapter',
   dependencies: config.postgresql.dependencies
-};
+}
 
-var cannotLoad = pluginHelper.cannotLoad(pluginMock);
-if(cannotLoad){
+const cannotLoad = pluginHelper.cannotLoad(pluginMock);
+if(cannotLoad) {
   util.die(cannotLoad);
 }
 
-var plugins = require(util.dirs().gekko + 'plugins');
+const pg = require('pg');
 
-var version = adapter.version;
+const version = adapter.version;
 
-var dbName = postgresUtil.database();
+const dbName = postgresUtil.database();
 
-var mode = util.gekkoMode();
+const mode = util.gekkoMode();
 
-var connectionString = config.postgresql.connectionString;
+const connectionString = config.postgresql.connectionString;
 
-var checkClient = new pg.Pool({
-  connectionString: connectionString+'/postgres',
+const checkClient = new pg.Pool({
+  connectionString: connectionString + '/postgres',
 });
-var pool = new pg.Pool({
-  connectionString: connectionString+'/'+dbName,
+const pool = new pg.Pool({
+  connectionString: connectionString + '/' + dbName,
 });
 
-/* Postgres does not have 'create database if not exists' so we need to check if the db exists first.
-This requires connecting to the default postgres database first. Your postgres user will need appropriate rights. */
-//checkClient.connect(function(err){
-  //if(err){
-    //util.die(err);
-  //}
-checkClient.connect((err, client, done) => {  
-  log.debug("Check database exists: "+dbName);
-  const query = client.query("select count(*) from pg_catalog.pg_database where datname = $1",[dbName], 
+// We need to check if the db exists first.
+// This requires connecting to the default
+// postgres database first. Your postgres
+// user will need appropriate rights.
+checkClient.connect((err, client, done) => {
+  if(err) {
+    util.die(err);
+  }
+
+  log.debug("Check database exists: " + dbName);
+  client.query("select count(*) from pg_catalog.pg_database where datname = $1", [dbName],
     (err, res) => {
       if(err) {
-        done();
         util.die(err);
       }
-      if(res.rows[0].count == 0) { //database does not exist
-        log.debug("Database "+dbName+" does not exist");
-        if(mode === 'realtime') { //create database if not found
-          log.debug("Creating database "+dbName);
-          client.query("CREATE DATABASE "+dbName,function(err) {
-            done();
-            if(err){
-              done();
-              util.die(err);
-            } else {
-                log.debug("Postgres connection pool is ready, db "+dbName);
-                upsertTables();
-            }
-          });
-        }else if(mode === 'backtest') {
-          done();
-          util.die(`History does not exist for exchange ${config.watch.exchange}.`);
-        }else{
-          done();
-          util.die(`Start gekko first in realtime mode to create tables. You are currently in the '${mode}' mode.`);
-        }
-      }else{ //database exists
-        done();
-        log.debug("Database exists: "+dbName);
-        log.debug("Postgres connection pool is ready, db "+dbName);
+
+      if(res.rows[0].count !== '0') {
+        // database exists
+        log.debug("Database exists: " + dbName);
+        log.debug("Postgres connection pool is ready, db " + dbName);
         upsertTables();
-      }  
+        done();
+        return;
+      }
+
+      // database dot NOT exist
+
+      if(mode === 'backtest') {
+        // no point in trying to backtest with
+        // non existing data.
+        util.die(`History does not exist for exchange ${config.watch.exchange}.`);
+      }
+
+      createDatabase(client, done);
     });
 });
 
+const createDatabase = (client, done) => {
+  client.query("CREATE DATABASE " + dbName, err => {
+    if(err) {
+      util.die(err);
+    }
 
-function upsertTables() {
-  var upsertQuery = 
+    log.debug("Postgres connection pool is ready, db " + dbName);
+    done();
+    upsertTables();
+  });
+}
+
+const upsertTables = () => {
+  const upsertQuery =
     `CREATE TABLE IF NOT EXISTS
     ${postgresUtil.table('candles')} (
       id BIGSERIAL PRIMARY KEY,
@@ -100,14 +103,12 @@ function upsertTables() {
       trades INTEGER NOT NULL
     );`;
 
-
-  pool.connect((err,client,done) => {
-    client.query(upsertQuery, (err) => {
-      done();
-    });
+  pool.query(upsertQuery, (err) => {
+    if(err) {
+      util.die(err);
+    }
   });
 }
-
 
 
 module.exports = pool;
