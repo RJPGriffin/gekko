@@ -59,18 +59,18 @@ Pushbullet.prototype.setup = function(done) {
       var currency = config.watch.currency;
       var asset = config.watch.asset;
       var body = "Gekko has started watching " +
-        exchange +
-        " " +
         currency +
-        " " +
+        "/" +
         asset +
-        ". No advice will be given until warmup period has elapsed.";
+        " on " +
+        exchange +
+        ".";
 
       if(config.trader.enabled){
-        body += "\n Live Trading is enabled"
+        body += "\nLive Trading is enabled"
       }
       if(config.paperTrader.enabled){
-        body += "\n Paper Trading is enabled"
+        body += "\nPaper Trading is enabled"
       }
       this.mail(title, body);
     } else {
@@ -86,10 +86,6 @@ Pushbullet.prototype.processCandle = function(candle, done) {
   done();
 };
 
-Pushbullet.prototype.processWarmupCompleted = function() {
-  var body = "Warmup Period Completed";
-  this.mail(title, body);
-};
 
 Pushbullet.prototype.processAdvice = function(advice) {
   if (advice.recommendation == "soft" && pushbulletConfig.muteSoft) return;
