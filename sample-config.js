@@ -280,16 +280,20 @@ config.mailer = {
 
 config.pushbullet = {
   // sends pushbullets if true
-  enabled: false,
+  enabled: true,
   // Send 'Gekko starting' message if true
   sendMessageOnStart: true,
+  // Send Message for advice?
+  sendOnAdvice: true,
+  // Send Message on Trade Completion?
+  sendOnTrade: true,
   // disable advice printout if it's soft
   muteSoft: true,
   // your pushbullet API key
-  key: 'xxx',
-  // your email, change it unless you are Azor Ahai
-  email: 'jon_snow@westeros.org',
-  // will make Gekko messages start mit [GEKKO]
+  key: '',
+  // your email
+  email: 'jon_snow@westeros.com',
+  // Messages will start with this tag
   tag: '[GEKKO]'
 };
 

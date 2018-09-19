@@ -58,13 +58,20 @@ Pushbullet.prototype.setup = function(done) {
       var exchange = config.watch.exchange;
       var currency = config.watch.currency;
       var asset = config.watch.asset;
-      var body = "Gekko has started, Ive started watching " +
+      var body = "Gekko has started watching " +
         exchange +
         " " +
         currency +
         " " +
         asset +
-        " I'll let you know when I got some advice";
+        ". No advice will be given until warmup period has elapsed.";
+
+      if(config.trader.enabled){
+        body += "\n Live Trading is enabled"
+      }
+      if(config.paperTrader.enabled){
+        body += "\n Paper Trading is enabled"
+      }
       this.mail(title, body);
     } else {
       log.debug('Skipping Send message on startup')
@@ -79,6 +86,11 @@ Pushbullet.prototype.processCandle = function(candle, done) {
   done();
 };
 
+Pushbullet.prototype.processWarmupCompleted = function() {
+  var body = "Warmup Period Completed";
+  this.mail(title, body);
+};
+
 Pushbullet.prototype.processAdvice = function(advice) {
   if (advice.recommendation == "soft" && pushbulletConfig.muteSoft) return;
 
@@ -88,9 +100,9 @@ Pushbullet.prototype.processAdvice = function(advice) {
   if (pushbulletConfig.sendOnAdvice) {
 
     var text = [
-      'Gekko is watching ',
+      'Gekko has new advice for ',
       config.watch.exchange,
-      ' and has detected a new trend, advice is to go ',
+      ', advice is to go ',
       advice.recommendation,
       '.\n\nThe current ',
       config.watch.asset,
@@ -140,8 +152,10 @@ Pushbullet.prototype.processTradeCompleted = function(trade) {
       slip.toFixed(2), '%',
       '\nAdvice Time: ',
       this.adviceTime.format("h:mm:ss"),
+      'UTC',
       '\nTrade Time: ',
       tradeTime.format("h:mm:ss"),
+      'UTC',
       '\nTime to Fill: ',
       timeToComplete
 
@@ -170,9 +184,9 @@ Pushbullet.prototype.mail = function(subject, content, done) {
 
 Pushbullet.prototype.checkResults = function(err) {
   if (err)
-    log.warn('error sending email', err);
+    log.warn('error sending pushbullet message', err);
   else
-    log.info('Send advice via email.');
+    log.info('Send advice via pushbullet message.');
 };
 
 module.exports = Pushbullet;
