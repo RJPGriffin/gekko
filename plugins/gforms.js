@@ -13,7 +13,7 @@ var gfc = config.gforms;
 var gforms = function(done) {
   _.bindAll(this);
 
-this.currentPrice = 0;
+  this.currentPrice = 0;
 
   //Track advice, linked to trades
   this.advicePrice = 0;
@@ -38,15 +38,15 @@ this.currentPrice = 0;
   }
 
   if (this.questions.length > 11) {
-    log.info(`Warning: Check prefill link. 11 fields were expected, found ${count}. Plugin may still work as expected.`)
+    log.info(`gForms Warning: Check prefill link. 11 fields were expected, found ${count}. Plugin may still work as expected.`)
   } else if (this.questions.length < 11) {
     if (this.questions.length == 0) {
-      log.info(`Error parsing prefill link. 0 fields were found. Plugin will not work.`)
+      log.info(`gForms Error parsing prefill link. 0 fields were found. Plugin will not work.`)
     } else {
-      log.info(`Warning: Check prefill link. 11 fields were expected, found ${count}. Plugin may still work but will be missing data.`)
+      log.info(`gForms Warning: Check prefill link. 11 fields were expected, only ${count} were found. Plugin may still work but will be missing data.`)
     }
   } else {
-    log.info(`Prefilled link parsed successfully. 11 fields found.`)
+    log.info(`gForms Prefilled link parsed successfully. 11 fields found.`)
   }
 
   this.done = done;
@@ -55,24 +55,26 @@ this.currentPrice = 0;
 
 gforms.prototype.setup = function(done) {
   var setupGforms = function(err, result) {
-    log.info('gForms Plugin Active. Any new trades will be sent to your google form');
+    log.info('gForms Plugin Active. All trades will be sent to your google form');
 
   };
   setupGforms.call(this)
 
 };
 
+//Gets the latest current price each candle
 gforms.prototype.processCandle = function(candle, done) {
   this.currentPrice = candle.close;
-  // log.info(`gForms: Process Candle`);
+  log.debug(`gForms: Process Candle`);
   done();
 }
 
+// Take note of time and price when advice is given for later calculations
 gforms.prototype.processAdvice = function(advice) {
   //Get advice price and time
   this.advicePrice = this.currentPrice;
   this.adviceTime = Date.now();
-  log.info(`gForms: Process Advice`);
+  log.debug(`gForms: Process Advice`);
 };
 
 gforms.prototype.processTradeCompleted = function(trade) {
@@ -80,7 +82,7 @@ gforms.prototype.processTradeCompleted = function(trade) {
   let asset = config.watch.asset;
   let exchange = config.watch.exchange;
   let tradeTime = Date.now();
-log.info(`gForms: processTradeCompleted`)
+  log.debug(`gForms: processTradeCompleted`)
   let timeToComplete = (tradeTime - this.adviceTime); //Difference in ms, converted to minutes
 
   //build up data string
@@ -113,7 +115,7 @@ log.info(`gForms: processTradeCompleted`)
 */
 
   log.info("Sending Trade Data to your Google Sheet");
-  log.info(this.formUrl + dataString);
+  log.debug(this.formUrl + dataString);
 
   request.post(this.formUrl + dataString + '&submit=Submit', function(error, response) {});
 
