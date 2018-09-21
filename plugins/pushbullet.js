@@ -91,7 +91,7 @@ Pushbullet.prototype.processAdvice = function(advice) {
   if (advice.recommendation == "soft" && pushbulletConfig.muteSoft) return;
 
   this.advicePrice = this.price;
-  this.adviceTime = moment();
+  this.adviceTime = advice.date;
 
   if (pushbulletConfig.sendOnAdvice) {
 
@@ -141,7 +141,8 @@ Pushbullet.prototype.processTradeCompleted = function(trade) {
       config.watch.currency,
       '\n',
       thisAction, ' ', trade.amount, config.watch.asset, ' @ ', trade.price,
-      '\nTime to Fill: ', timeToComplete '\nSlipped ', slip.toFixed(2), '%', 'from advice price @ ', this.advicePrice,
+      '\nTime to Fill: ', timeToComplete,
+      '\nSlipped ', slip.toFixed(2), '%', 'from advice price @ ', this.advicePrice,
       '\nBalance:', trade.balance, config.watch.currency
     ].join('');
 
