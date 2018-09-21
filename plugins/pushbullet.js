@@ -66,10 +66,10 @@ Pushbullet.prototype.setup = function(done) {
         exchange +
         ".";
 
-      if(config.trader.enabled){
+      if (config.trader.enabled) {
         body += "\nLive Trading is enabled"
       }
-      if(config.paperTrader.enabled){
+      if (config.paperTrader.enabled) {
         body += "\nPaper Trading is enabled"
       }
       this.mail(title, body);
@@ -126,13 +126,12 @@ Pushbullet.prototype.processTradeCompleted = function(trade) {
       slip = '1234';
     }
 
-    let tradeTime = moment();
+    let tradeTime = trade.date;
     let diff = tradeTime.diff(this.adviceTime);
     let timeToComplete = moment.utc(diff).format("mm:ss");
 
-
-    // timeToComplete = trade.date - this.adviceTime;
-    // timeToComplete.format('h:mm:ss');
+    //bought/sold
+    var thisAction = trade.action === 'buy' ? 'Bought' : 'Sold';
 
     var text = [
       config.watch.exchange,
@@ -140,21 +139,10 @@ Pushbullet.prototype.processTradeCompleted = function(trade) {
       config.watch.asset,
       '/',
       config.watch.currency,
-      '\nAdvice Price: ',
-      this.advicePrice,
-      '\nTrade Price: ',
-      trade.price,
-      '\nSlip: ',
-      slip.toFixed(2), '%',
-      '\nAdvice Time: ',
-      this.adviceTime.format("h:mm:ss"),
-      'UTC',
-      '\nTrade Time: ',
-      tradeTime.format("h:mm:ss"),
-      'UTC',
-      '\nTime to Fill: ',
-      timeToComplete
-
+      '\n',
+      thisAction, ' ', trade.amount, config.watch.asset, ' @ ', trade.price,
+      '\nTime to Fill: ', timeToComplete '\nSlipped ', slip.toFixed(2), '%', 'from advice price @ ', this.advicePrice,
+      '\nBalance:', trade.balance, config.watch.currency
     ].join('');
 
     var subject = '';
