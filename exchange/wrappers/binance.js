@@ -117,9 +117,8 @@ Trader.prototype.handleResponse = function(funcName, callback) {
       }
 
       if(funcName === 'checkOrder' && error.message.includes('Order does not exist.')) {
-        // order got filled in full before it could be
-        // cancelled, meaning it was NOT cancelled.
-        return callback(false, {filled: true});
+        console.log(new Date, 'Binance doesnt know this order, retrying up to 10 times..');
+        error.retry = 10;
       }
 
       if(funcName === 'addOrder' && error.message.includes('Account has insufficient balance')) {
@@ -284,7 +283,6 @@ Trader.prototype.isValidPrice = function(price) {
 }
 
 Trader.prototype.isValidLot = function(price, amount) {
-  console.log('isValidLot', this.market.minimalOrder.order, amount * price >= this.market.minimalOrder.order)
   return amount * price >= this.market.minimalOrder.order;
 }
 
@@ -343,8 +341,20 @@ Trader.prototype.getOrder = function(order, callback) {
     });
 
     if(!trades.length) {
-      console.log('cannot find trades!', { order, list: data.map(t => t.orderId) });
-      return callback(new Error('Trades not found'));
+      console.log('cannot find trades!', { order, list: data.map(t => t.orderId).reverse() });
+
+      const reqData = {
+        symbol: this.pair,
+        orderId: order,
+      };
+
+      this.binance.queryOrder(reqData, (err, resp) => {
+        console.log('couldnt find any trade for order, here is order:', {err, resp});
+
+         callback(new Error('Trades not found'));
+      });
+
+      return;
     }
 
     _.each(trades, trade => {
@@ -452,8 +462,6 @@ Trader.prototype.cancelOrder = function(order, callback) {
     this.oldOrder = order;
 
     if(err) {
-      if(err.message.contains(''))
-
       return callback(err);
     }
 

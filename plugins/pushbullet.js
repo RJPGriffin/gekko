@@ -130,8 +130,9 @@ Pushbullet.prototype.processTradeCompleted = function(trade) {
     let diff = tradeTime.diff(this.adviceTime);
     let timeToComplete = moment.utc(diff).format("mm:ss");
 
-    //bought/sold
-    var thisAction = trade.action === 'buy' ? 'Bought' : 'Sold';
+
+    // timeToComplete = trade.date - this.adviceTime;
+    // timeToComplete.format('h:mm:ss');
 
     var text = [
       config.watch.exchange,

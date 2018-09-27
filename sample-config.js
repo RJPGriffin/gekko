@@ -150,7 +150,7 @@ config.mailer = {
 
 config.pushbullet = {
   // sends pushbullets if true
-  enabled: true,
+  enabled: false,
   // Send 'Gekko starting' message if true
   sendMessageOnStart: true,
   // Send Message for advice?
@@ -348,10 +348,10 @@ config.mongodb = {
 
 config.backtest = {
   daterange: 'scan',
-// daterange: {
-//   from: "2018-03-01",
-//   to: "2018-04-28"
-//},
+  // daterange: {
+  //   from: "2018-03-01",
+  //   to: "2018-04-28"
+  //},
   batchSize: 50
 }
 
@@ -443,9 +443,18 @@ config.TSI = {
 
 // Ultimate Oscillator Settings
 config.UO = {
-  first: {weight: 4, period: 7},
-  second: {weight: 2, period: 14},
-  third: {weight: 1, period: 28},
+  first: {
+    weight: 4,
+    period: 7
+  },
+  second: {
+    weight: 2,
+    period: 14
+  },
+  third: {
+    weight: 1,
+    period: 28
+  },
   thresholds: {
     low: 30,
     high: 70,
@@ -457,13 +466,13 @@ config.UO = {
 
 // CCI Settings
 config.CCI = {
-    constant: 0.015, // constant multiplier. 0.015 gets to around 70% fit
-    history: 90, // history size, make same or smaller than history
-    thresholds: {
-        up: 100, // fixed values for overbuy upward trajectory
-        down: -100, // fixed value for downward trajectory
-        persistence: 0 // filter spikes by adding extra filters candles
-    }
+  constant: 0.015, // constant multiplier. 0.015 gets to around 70% fit
+  history: 90, // history size, make same or smaller than history
+  thresholds: {
+    up: 100, // fixed values for overbuy upward trajectory
+    down: -100, // fixed value for downward trajectory
+    persistence: 0 // filter spikes by adding extra filters candles
+  }
 };
 
 // StochRSI settings
