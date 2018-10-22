@@ -122,17 +122,11 @@ Pushbullet.prototype.processTradeCompleted = function(trade) {
       slip = 100 * ((trade.price - this.advicePrice) / this.advicePrice);
     } else if (trade.action === 'sell') {
       slip = 100 * ((this.advicePrice - trade.price) / this.advicePrice);
-    } else {
-      slip = '1234';
     }
 
     let tradeTime = trade.date;
     let diff = tradeTime.diff(this.adviceTime);
     let timeToComplete = moment.utc(diff).format("mm:ss");
-
-
-    // timeToComplete = trade.date - this.adviceTime;
-    // timeToComplete.format('h:mm:ss');
 
     var text = [
       config.watch.exchange,
@@ -150,12 +144,21 @@ Pushbullet.prototype.processTradeCompleted = function(trade) {
     var subject = '';
 
 
-    subject = pushbulletConfig.tag + ' ' + trade.action + ' Complete ';
+    subject = pushbulletConfig.tag + ' ' + trade.action + ' complete ';
 
 
     this.mail(subject, text);
   }
 };
+
+function calcFixed(num) {
+  let i = 1
+  while (num < 100 && i < 8) {
+    num *= 10;
+    i += 1;
+  }
+  return (i);
+}
 
 Pushbullet.prototype.mail = function(subject, content, done) {
   var pusher = new pushbullet(pushbulletConfig.key);
