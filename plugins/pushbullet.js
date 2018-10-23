@@ -18,9 +18,6 @@ config.pushbullet = {
   sendOnTrade: true,
   // For Overall P/L calc. Pass in old balance if desired, else leave '0'
   startingBalance: '0',
-  // Enable FIAT Conversion via cryptocompare API
-  FIAT: true,
-  fiatCurrency: "GBP", // 3 letter code for most fiat currencies will work - USD, EUR etc
   // your pushbullet API key
   key: '',
   // your email
@@ -133,8 +130,6 @@ Pushbullet.prototype.processTradeCompleted = function(trade) {
     let exposureTimeStr = '';
     let balanceChangeStr = '\n\n';
     let totBalanceChangeStr = '';
-    let fiatBalStr = '';
-    let waitOnApi = 0; //Janky solution to async get request
 
     if (trade.action === 'buy') {
       this.hasBought = 1; // Flag to ensure that the following variables have been filled
@@ -170,35 +165,9 @@ Pushbullet.prototype.processTradeCompleted = function(trade) {
       } else { // No change
         totBalanceChangeStr = `\nNo Change to Balance`
       }
-      //Check Fiat Conversion
-      if (pbConf.FIAT === true) {
-        waitOnApi = 1;
-        let fPrice = 0;
-        let url = `https://min-api.cryptocompare.com/data/price?fsym=${config.watch.currency}&tsyms=${pbConf.fiatCurrency}`
-        console.log(url);
-        request(url, function(error, res, body) {
-          if (res.statusCode === 200) {
-            console.log(`Response ${res.statusCode}`);
-            body = JSON.parse(body);
-            fPrice = body[pbConf.fiatCurrency];
-            fiatBalStr = `\n\n${pbConf.fiatCurrency} Stats:
-            waitOnApi = 0;
-            \nRound Trip ${nBal>oBal?"gain =":"loss = -"}${getNumStr(diffBal * fPrice,2)}${pbConf.fiatCurrency}
-            \nTotal Balance = ${getNumStr(trade.balance*fPrice,2)}${pbConf.fiatCurrency}
-            \nOverall ${nBal>sBal?"gain of ":"loss of -"}${getNumStr(tDiffBal * fPrice,2)}${pbConf.fiatCurrency}`;
-          } else {
-            fiatBalStr = `Failed to retrieve ${config.watch.currency}/${pbConf.fiatCurrency} price information`;
-            log.info(`Bad response from cryptocompare: Status ${res.statusCode}`);
-          }
-        });
-      }
     } else if (trade.action === 'sell' && !this.hasBought) {
       balanceChangeStr = `\n\nNot enough data for exposure time, round trip or overall performance yet. This will appear after bot has completed first round trip.`
     }
-
-    console.log(`FiatStr = ${fiatBalStr}`);
-
-
 
     let costOfTradeStr = `\nCost of Trade: ${getNumStr(trade.cost)}${config.watch.currency}, ${getNumStr((trade.cost / trade.amount) * 100, 2)}%`;
 
@@ -206,8 +175,7 @@ Pushbullet.prototype.processTradeCompleted = function(trade) {
     let orderFillTimeStr = '';
     let slippageStr = '';
 
-    if (true) {
-      // if (!config.paperTrader.enabled) {
+    if (!config.paperTrader.enabled) {
       let timeToComplete = moment.duration(trade.date.diff(this.adviceTime)).humanize();
       orderFillTimeStr = `\nOrder fill Time: ${timeToComplete}`;
 
@@ -225,24 +193,6 @@ Pushbullet.prototype.processTradeCompleted = function(trade) {
 
     }
 
-    //Now see if we are waiting for a response from the api - with 1 second timeout
-    if (waitOnApi) {
-      let timeout = 1;
-
-      setTimeout(function() {
-        timeout = 0;
-        console.log("Timeout Triggered");
-      }, 500);
-
-      while (waitOnApi && timeout) {
-
-      }
-      if (!timeout) {
-        console.log(`API TimedOut`);
-      }
-
-    }
-
     var text = [
       capF(config.watch.exchange), ' ', config.watch.asset, '/', config.watch.currency,
       `\n\n${config.watch.asset} Trade Price: ${trade.price}`,
@@ -253,8 +203,7 @@ Pushbullet.prototype.processTradeCompleted = function(trade) {
       exposureTimeStr,
       '\n\nBalance: ', getNumStr(trade.balance), config.watch.currency,
       balanceChangeStr,
-      totBalanceChangeStr,
-      fiatBalStr
+      totBalanceChangeStr
     ].join('');
 
 
