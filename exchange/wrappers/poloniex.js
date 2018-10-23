@@ -45,7 +45,8 @@ const recoverableErrors = [
   'Connection timed out. Please try again.',
   // getaddrinfo EAI_AGAIN poloniex.com poloniex.com:443
   'EAI_AGAIN',
-  'ENETUNREACH'
+  'ENETUNREACH',
+  'socket hang up'
 ];
 
 // errors that might mean
@@ -100,6 +101,12 @@ Trader.prototype.processResponse = function(next, fn, payload) {
 
       if(includes(error.message, recoverableErrors)) {
         error.notFatal = true;
+      }
+
+      if(includes(error.message, ['Currently in maintenance mode.'])) {
+        console.log(new Date, '[Poloniex] Currently in maintenance mode. Retrying...');
+        error.notFatal = true;
+        error.backoffDelay = 1000;
       }
 
       // not actually an error, means order never executed against other trades
