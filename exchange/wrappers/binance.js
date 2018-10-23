@@ -63,7 +63,7 @@ const Trader = function(config) {
     // Though we can deduce feePercent based
     // on user fee tracked through `this.getFee`.
     // Set default here, overwrite in getFee.
-    this.fee = 0.1;
+    this.fee = 0.001;
     // Set the proper fee asap.
     this.getFee(_.noop);
 
@@ -111,18 +111,19 @@ Trader.prototype.handleResponse = function(funcName, callback) {
       }
 
       if(funcName === 'cancelOrder' && error.message.includes('UNKNOWN_ORDER')) {
+        console.log(new Date, 'cancelOrder', 'UNKNOWN_ORDER');
         // order got filled in full before it could be
         // cancelled, meaning it was NOT cancelled.
         return callback(false, {filled: true});
       }
 
       if(funcName === 'checkOrder' && error.message.includes('Order does not exist.')) {
-        // order got filled in full before it could be
-        // cancelled, meaning it was NOT cancelled.
-        return callback(false, {filled: true});
+        console.log(new Date, 'Binance doesnt know this order, retrying up to 10 times..');
+        error.retry = 10;
       }
 
       if(funcName === 'addOrder' && error.message.includes('Account has insufficient balance')) {
+        console.log(new Date, 'insufficientFunds');
         error.type = 'insufficientFunds';
       }
 
@@ -211,13 +212,22 @@ Trader.prototype.getFee = function(callback) {
     if(err)  {
       return callback(err);
     }
-
     const basepoints = data.makerCommission;
 
+    /** Binance raw response
+    { makerCommission: 10,
+      takerCommission: 10,
+      buyerCommission: 0,
+      sellerCommission: 0,
+      canTrade: true,
+      canWithdraw: true,
+      canDeposit: true,
+      So to get decimal representation of fee we actually need to divide by 10000
+    */
     // note non standard func, see constructor
-    this.fee = basepoints / 100;
+    this.fee = basepoints / 10000;
 
-    callback(undefined, basepoints / 100);
+    callback(undefined, this.fee);
   }
 
   const fetch = cb => this.binance.account({}, this.handleResponse('getFee', cb));
@@ -284,7 +294,6 @@ Trader.prototype.isValidPrice = function(price) {
 }
 
 Trader.prototype.isValidLot = function(price, amount) {
-  console.log('isValidLot', this.market.minimalOrder.order, amount * price >= this.market.minimalOrder.order)
   return amount * price >= this.market.minimalOrder.order;
 }
 
@@ -343,8 +352,20 @@ Trader.prototype.getOrder = function(order, callback) {
     });
 
     if(!trades.length) {
-      console.log('cannot find trades!', { order, list: data.map(t => t.orderId) });
-      return callback(new Error('Trades not found'));
+      console.log('cannot find trades!', { order, list: data.map(t => t.orderId).reverse() });
+
+      const reqData = {
+        symbol: this.pair,
+        orderId: order,
+      };
+
+      this.binance.queryOrder(reqData, (err, resp) => {
+        console.log('couldnt find any trade for order, here is order:', {err, resp});
+
+         callback(new Error('Trades not found'));
+      });
+
+      return;
     }
 
     _.each(trades, trade => {
@@ -452,8 +473,6 @@ Trader.prototype.cancelOrder = function(order, callback) {
     this.oldOrder = order;
 
     if(err) {
-      if(err.message.contains(''))
-
       return callback(err);
     }
 
