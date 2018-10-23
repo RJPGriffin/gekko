@@ -18,6 +18,9 @@ config.pushbullet = {
   sendOnTrade: true,
   // For Overall P/L calc. Pass in old balance if desired, else leave '0'
   startingBalance: '0',
+  // Enable FIAT Conversion via cryptocompare API
+  FIAT: true,
+  fiatCurrency: "GBP", // 3 letter code for most fiat currencies will work - USD, EUR etc
   // your pushbullet API key
   key: '',
   // your email
@@ -32,6 +35,7 @@ config.pushbullet = {
 var pushbullet = require("pushbullet");
 var _ = require('lodash');
 const moment = require('moment');
+const request = require('request');
 var log = require('../core/log.js');
 var util = require('../core/util.js');
 var config = util.getConfig();
@@ -127,7 +131,10 @@ Pushbullet.prototype.processTradeCompleted = function(trade) {
 
     // Calculate exposure Time
     let exposureTimeStr = '';
-    let balanceChangeStr = '';
+    let balanceChangeStr = '\n\n';
+    let totBalanceChangeStr = '';
+    let fiatBalStr = '';
+    let waitOnApi = 0; //Janky solution to async get request
 
     if (trade.action === 'buy') {
       this.hasBought = 1; // Flag to ensure that the following variables have been filled
@@ -144,11 +151,11 @@ Pushbullet.prototype.processTradeCompleted = function(trade) {
 
 
       if (nBal > oBal) { // profit!
-        balanceChangeStr = `\nRound trip profit of ${diffBal} ${config.watch.currency}, ${getNumStr(percDiffBal,2)}%`
+        balanceChangeStr = `\n\nRound trip profit of ${getNumStr(diffBal)}${config.watch.currency}, ${getNumStr(percDiffBal,2)}%`
       } else if (nBal < oBal) { //  Loss :(
-        balanceChangeStr = `\nRound trip loss of -${diffBal} ${config.watch.currency}, -${getNumStr(percDiffBal,2)}%`
+        balanceChangeStr = `\n\nRound trip loss of -${getNumStr(diffBal)}${config.watch.currency}, -${getNumStr(percDiffBal,2)}%`
       } else { // No change
-        balanceChangeStr = `\nNo Change to Balance`
+        balanceChangeStr = `\n\nNo Change to Balance`
       }
 
 
@@ -157,18 +164,43 @@ Pushbullet.prototype.processTradeCompleted = function(trade) {
       let tDiffBal = Math.abs(nBal - sBal);
       let percDiffTotBal = (tDiffBal / sBal) * 100;
       if (nBal > sBal) { // profit!
-        balanceChangeStr = `\nOverall profit of ${tDiffBal} ${config.watch.currency}, ${getNumStr(percDiffTotBal,2)}%`
+        totBalanceChangeStr = `\nOverall gain of ${getNumStr(tDiffBal)}${config.watch.currency}, ${getNumStr(percDiffTotBal,2)}%`
       } else if (nBal < sBal) { //  Loss :(
-        balanceChangeStr = `\nOverall loss of -${tDiffBal} ${config.watch.currency}, -${getNumStr(percDiffTotBal,2)}%`
+        totBalanceChangeStr = `\nOverall loss of -${getNumStr(tDiffBal)}${config.watch.currency}, -${getNumStr(percDiffTotBal,2)}%`
       } else { // No change
-        balanceChangeStr = `\nNo Change to Balance`
+        totBalanceChangeStr = `\nNo Change to Balance`
       }
+      //Check Fiat Conversion
+      if (pbConf.FIAT === true) {
+        waitOnApi = 1;
+        let fPrice = 0;
+        let url = `https://min-api.cryptocompare.com/data/price?fsym=${config.watch.currency}&tsyms=${pbConf.fiatCurrency}`
+        console.log(url);
+        request(url, function(error, res, body) {
+          if (res.statusCode === 200) {
+            console.log(`Response ${res.statusCode}`);
+            body = JSON.parse(body);
+            fPrice = body[pbConf.fiatCurrency];
+            fiatBalStr = `\n\n${pbConf.fiatCurrency} Stats:
+            waitOnApi = 0;
+            \nRound Trip ${nBal>oBal?"gain =":"loss = -"}${getNumStr(diffBal * fPrice,2)}${pbConf.fiatCurrency}
+            \nTotal Balance = ${getNumStr(trade.balance*fPrice,2)}${pbConf.fiatCurrency}
+            \nOverall ${nBal>sBal?"gain of ":"loss of -"}${getNumStr(tDiffBal * fPrice,2)}${pbConf.fiatCurrency}`;
+          } else {
+            fiatBalStr = `Failed to retrieve ${config.watch.currency}/${pbConf.fiatCurrency} price information`;
+            log.info(`Bad response from cryptocompare: Status ${res.statusCode}`);
+          }
+        });
+      }
+    } else if (trade.action === 'sell' && !this.hasBought) {
+      balanceChangeStr = `\n\nNot enough data for exposure time, round trip or overall performance yet. This will appear after bot has completed first round trip.`
     }
 
+    console.log(`FiatStr = ${fiatBalStr}`);
 
-    //Slip direction is opposite for buy and sell
 
-    let costOfTradeStr = `\nCost of Trade: ${getNumStr(trade.cost)} ${config.watch.currency}, ${getNumStr((trade.cost / trade.amount) * 100, 2)}%`;
+
+    let costOfTradeStr = `\nCost of Trade: ${getNumStr(trade.cost)}${config.watch.currency}, ${getNumStr((trade.cost / trade.amount) * 100, 2)}%`;
 
     //build strings that are only sent for Live trading, not paperTrader
     let orderFillTimeStr = '';
@@ -180,6 +212,7 @@ Pushbullet.prototype.processTradeCompleted = function(trade) {
       orderFillTimeStr = `\nOrder fill Time: ${timeToComplete}`;
 
       var slip;
+      //Slip direction is opposite for buy and sell
       if (trade.price === this.advicePrice) {
         slip = 0;
       } else if (trade.action === 'buy') {
@@ -188,20 +221,40 @@ Pushbullet.prototype.processTradeCompleted = function(trade) {
         slip = 100 * ((this.advicePrice - trade.price) / this.advicePrice);
       }
       slippageStr = `\nSlipped ${getNumStr(slip,2)}% from advice @ ${getNumStr(this.advicePrice)}`;
+
+
+    }
+
+    //Now see if we are waiting for a response from the api - with 1 second timeout
+    if (waitOnApi) {
+      let timeout = 1;
+
+      setTimeout(function() {
+        timeout = 0;
+        console.log("Timeout Triggered");
+      }, 500);
+
+      while (waitOnApi && timeout) {
+
+      }
+      if (!timeout) {
+        console.log(`API TimedOut`);
+      }
+
     }
 
     var text = [
       capF(config.watch.exchange), ' ', config.watch.asset, '/', config.watch.currency,
       `\n\n${config.watch.asset} Trade Price: ${trade.price}`,
       `\n${getPastTense(trade.action)} ${getNumStr(trade.amount)} ${config.watch.asset}`,
-      // `\n\n`, getPastTense(trade.action), ' ', getNumStr(trade.amount), ' ', config.watch.asset,
-      // ' @ ', getNumStr(trade.price), ' ', config.watch.currency, '\n',
       orderFillTimeStr,
       slippageStr,
       costOfTradeStr,
-      exposureTimeStr, //Empty unless action is sell
+      exposureTimeStr,
       '\n\nBalance: ', getNumStr(trade.balance), config.watch.currency,
-      balanceChangeStr //Empty unless action is sell
+      balanceChangeStr,
+      totBalanceChangeStr,
+      fiatBalStr
     ].join('');
 
 
@@ -238,7 +291,6 @@ function getNumStr(num, fixed = 4) {
     for (let i = 1; i < fixed; i++) {
       modNumMax = modNumMax + '0';
     }
-    console.log(modNumMax);
     modNumMax = Number(modNumMax);
 
     let i = 0;

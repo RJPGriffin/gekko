@@ -15,29 +15,27 @@ var strat = {};
 
 // Prepare everything our method needs
 strat.init = function() {
-  this.toggle = 0;
+  this.toggle = 1;
   this.input = 'candle';
   this.currentTrend = 'long';
   this.requiredHistory = 0;
 }
 
 // What happens on every new candle?
-strat.update = function(candle) {
-}
+strat.update = function(candle) {}
 
 // For debugging purposes.
-strat.log = function() {
-}
+strat.log = function() {}
 
 // Based on the newly calculated
 // information, check if we should
 // update or not.
 strat.check = function() {
 
-  if(this.toggle === 0){
+  if (this.toggle === 0) {
     this.advice('short');
     this.toggle = 1;
-  }else{
+  } else {
     this.advice('long');
     this.toggle = 0;
   }

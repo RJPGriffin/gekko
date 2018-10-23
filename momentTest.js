@@ -1,20 +1,26 @@
 const moment = require('moment');
+const request = require('request');
 
-let a = moment([2000, 1, 5]).add(3, 'hours');
-let b = moment([2000, 1, 5]).add(3, 'hours').add(10, 'minutes').add(30, 'seconds');
-let days = moment.duration(b.diff(a));
-// console.log(days.humanize());
-// console.log(`\nExposure Time: ${days.humanize()}`);
-// let num = '8547086.462';
-let num = '0.0001234';
+let fPrice = 0;
+let fiat = "USD";
+let url = `https://min-api.cryptocompare.com/data/price?fsym=BTC&tsyms=USD`
+// request('http://www.google.com', function (error, response, body) {
+let retries = 3;
+// while (retries > 0) {
+request(url, function(error, res, body) {
+  if (res.statusCode === 200) {
+    body = JSON.parse(body);
+    fPrice = body[fiat];
+    retries = 0;
+    console.log(fPrice);
+  } else {
+    // retries--;
+    // if (!retries)
+    log.info(`Failed to get fiat value from cryptocompare after 3 attempts`);
+  }
+});
+// }
 
-
-
-let oBal = 150;
-let nBal = 200;
-let percDiff = (Math.abs(nBal - oBal) / oBal) * 100;
-
-console.log(getNumStr(num, 5));
 
 function capF(inWord) { //Capitalise first letter of string
   return (inWord.charAt(0).toUpperCase() + inWord.slice(1));
