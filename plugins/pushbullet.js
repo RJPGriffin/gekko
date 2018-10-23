@@ -224,7 +224,7 @@ function getNumStr(num, fixed = 4) {
   if (typeof num != "number") {
     num = Number(num);
     if (isNaN(num)) {
-      console.log("Pushbullet Plugin: Number Conversion Failed");
+      // console.log("Pushbullet Plugin: Number Conversion Failed");
       return "Conversion Failure";
     }
   }
