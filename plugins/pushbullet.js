@@ -12,7 +12,7 @@ config.pushbullet = {
   enabled: true,
   // Send 'Gekko starting' message if true
   sendMessageOnStart: true,
-  // Send Message for advice?
+  // Send Message for advice? Recommend Flase for paper, true for live
   sendOnAdvice: true,
   // Send Message on Trade Completion?
   sendOnTrade: true,
@@ -43,8 +43,7 @@ var Pushbullet = function(done) {
 
   this.pusher;
   this.price = 'N/A';
-
-  this.startingBalance = pbConf.startBal === undefined ? 0 : Number(pbConf.startingBalance);
+  this.startingBalance = pbConf.startingBalance === undefined ? 0 : Number(pbConf.startingBalance);
   this.advicePrice = 0;
   this.adviceTime = moment();
   this.lastBuyTime = moment();
@@ -201,9 +200,9 @@ Pushbullet.prototype.processTradeCompleted = function(trade) {
       slippageStr,
       costOfTradeStr,
       exposureTimeStr,
-      '\n\nBalance: ', getNumStr(trade.balance), config.watch.currency,
       balanceChangeStr,
-      totBalanceChangeStr
+      totBalanceChangeStr,
+      '\n\nBalance: ', getNumStr(trade.balance), config.watch.currency,
     ].join('');
 
 
