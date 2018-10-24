@@ -63,9 +63,9 @@ Pushbullet.prototype.setup = function(done) {
       var currency = config.watch.currency;
       var asset = config.watch.asset;
       var body = "Gekko has started watching " +
-        currency +
-        "/" +
         asset +
+        "/" +
+        currency +
         " on " +
         exchange +
         ".";
