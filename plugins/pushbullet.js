@@ -62,20 +62,21 @@ Pushbullet.prototype.setup = function(done) {
       var exchange = config.watch.exchange;
       var currency = config.watch.currency;
       var asset = config.watch.asset;
-      var body = "Gekko has started watching " +
-        asset +
-        "/" +
-        currency +
-        " on " +
-        exchange +
-        ".";
-
+      let tradeType = 'watching';
       if (config.trader.enabled) {
-        body += "\nLive Trading is enabled"
+        tradeType = "Live Trading";
       }
       if (config.paperTrader.enabled) {
-        body += "\nPaper Trading is enabled"
+        tradeType = "Paper Trading";
       }
+
+      var body = `Gekko has started ${tradeType} ${asset}/${currency} on ${exchange}.`;
+
+      //If trading Advisor is enabled, add strategy and candle size information
+      if (config.tradingAdvisor.enabled) {
+        body += `\n\nUsing ${config.tradingAdvisor.method} strategy on M${config.tradingAdvisor.candleSize} candles.`
+      }
+
       this.mail(title, body);
     } else {
       log.debug('Skipping Send message on startup')
@@ -146,10 +147,10 @@ Pushbullet.prototype.processTradeCompleted = function(trade) {
 
 
       if (nBal >= oBal) { // profit!
-        balanceChangeStr = `\n\nRound trip profit of \n${getNumStr(diffBal)}${config.watch.currency}, \n${getNumStr(percDiffBal,2)}%`
+        balanceChangeStr = `\n\nRound trip profit of: \n${getNumStr(diffBal)}${config.watch.currency} \n${getNumStr(percDiffBal,2)}%\n`
         subject = `${subject}: +${getNumStr(percDiffBal,2)}%`
       } else if (nBal < oBal) { //  Loss :(
-        balanceChangeStr = `\n\nRound trip loss of \n-${getNumStr(diffBal)}${config.watch.currency}, \n-${getNumStr(percDiffBal,2)}%`
+        balanceChangeStr = `\n\nRound trip loss of: \n-${getNumStr(diffBal)}${config.watch.currency} \n-${getNumStr(percDiffBal,2)}%\n`
         subject = `${subject}: -${getNumStr(percDiffBal,2)}%`
       }
 
@@ -158,55 +159,56 @@ Pushbullet.prototype.processTradeCompleted = function(trade) {
       let tDiffBal = Math.abs(nBal - sBal);
       let percDiffTotBal = (tDiffBal / sBal) * 100;
       if (nBal >= sBal) { // profit!
-        totBalanceChangeStr = `\nOverall gain of: \n${getNumStr(tDiffBal)}${config.watch.currency}, \n${getNumStr(percDiffTotBal,2)}%`
+        totBalanceChangeStr = `\nOverall gain of: \n${getNumStr(tDiffBal)}${config.watch.currency} \n${getNumStr(percDiffTotBal,2)}%\n`
       } else if (nBal < sBal) { //  Loss :(
-        totBalanceChangeStr = `\nOverall loss of \n-${getNumStr(tDiffBal)}${config.watch.currency}, \n-${getNumStr(percDiffTotBal,2)}%`
+        totBalanceChangeStr = `\nOverall loss of \n-${getNumStr(tDiffBal)}${config.watch.currency} \n-${getNumStr(percDiffTotBal,2)}%\n`
 
       } else if (trade.action === 'sell' && !this.hasBought) {
         balanceChangeStr = `\n\nNot enough data for exposure time, round trip or overall performance yet. This will appear after bot has completed first round trip.`
       }
-
-      let costOfTradeStr = `\nCost of Trade: ${getNumStr(trade.cost)}${config.watch.currency}, ${getNumStr((trade.cost / trade.amount) * 100, 2)}%`;
-
-      //build strings that are only sent for Live trading, not paperTrader
-      let orderFillTimeStr = '';
-      let slippageStr = '';
-
-      if (!config.paperTrader.enabled) {
-        let timeToComplete = moment.duration(trade.date.diff(this.adviceTime)).humanize();
-        orderFillTimeStr = `\nOrder fill Time: ${timeToComplete}`;
-
-        var slip;
-        //Slip direction is opposite for buy and sell
-        if (trade.price === this.advicePrice) {
-          slip = 0;
-        } else if (trade.action === 'buy') {
-          slip = 100 * ((trade.price - this.advicePrice) / this.advicePrice);
-        } else if (trade.action === 'sell') {
-          slip = 100 * ((this.advicePrice - trade.price) / this.advicePrice);
-        }
-        slippageStr = `\nSlipped ${getNumStr(slip,2)}% from advice @ ${getNumStr(this.advicePrice)}`;
-
-
-      }
-
-      var text = [
-        capF(config.watch.exchange), ' ', config.watch.asset, '/', config.watch.currency,
-        `\n\n${config.watch.asset} Trade Price: ${getNumStr(trade.price)}`,
-        `\n${getPastTense(trade.action)} ${getNumStr(trade.amount)} ${config.watch.asset}`,
-        orderFillTimeStr,
-        slippageStr,
-        costOfTradeStr,
-        exposureTimeStr,
-        balanceChangeStr,
-        totBalanceChangeStr,
-        '\nBalance: ', getNumStr(trade.balance), config.watch.currency,
-      ].join('');
-
-      this.mail(subject, text);
     }
-  };
-}
+
+    let costOfTradeStr = `\nCost of Trade: ${getNumStr(trade.cost)}${config.watch.currency}, ${getNumStr((trade.cost / trade.amount) * 100, 2)}%`;
+
+    //build strings that are only sent for Live trading, not paperTrader
+    let orderFillTimeStr = '';
+    let slippageStr = '';
+
+    if (!config.paperTrader.enabled) {
+      let timeToComplete = moment.duration(trade.date.diff(this.adviceTime)).humanize();
+      orderFillTimeStr = `\nOrder fill Time: ${timeToComplete}`;
+
+      var slip;
+      //Slip direction is opposite for buy and sell
+      if (trade.price === this.advicePrice) {
+        slip = 0;
+      } else if (trade.action === 'buy') {
+        slip = 100 * ((trade.price - this.advicePrice) / this.advicePrice);
+      } else if (trade.action === 'sell') {
+        slip = 100 * ((this.advicePrice - trade.price) / this.advicePrice);
+      }
+      slippageStr = `\nSlipped ${getNumStr(slip,2)}% from advice @ ${getNumStr(this.advicePrice)}`;
+
+
+    }
+
+    var text = [
+      capF(config.watch.exchange), ' ', config.watch.asset, '/', config.watch.currency,
+      `\n\n${config.watch.asset} Trade Price: ${getNumStr(trade.price)}`,
+      `\n${getPastTense(trade.action)} ${getNumStr(trade.amount)} ${config.watch.asset}`,
+      orderFillTimeStr,
+      slippageStr,
+      costOfTradeStr,
+      exposureTimeStr,
+      balanceChangeStr,
+      totBalanceChangeStr,
+      '\nBalance: ', getNumStr(trade.balance), config.watch.currency,
+    ].join('');
+
+    this.mail(subject, text);
+  }
+};
+
 
 // A long winded function to make sure numbers aren't displayed with too many decimal places
 // and are a little humanized
