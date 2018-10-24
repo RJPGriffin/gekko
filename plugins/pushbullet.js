@@ -127,8 +127,9 @@ Pushbullet.prototype.processTradeCompleted = function(trade) {
 
     // Calculate exposure Time
     let exposureTimeStr = '';
-    let balanceChangeStr = '\n\n';
+    let balanceChangeStr = '\n';
     let totBalanceChangeStr = '';
+    let subject = `${pbConf.tag} ${capF(trade.action)} complete`;
 
     if (trade.action === 'buy') {
       this.hasBought = 1; // Flag to ensure that the following variables have been filled
@@ -146,8 +147,10 @@ Pushbullet.prototype.processTradeCompleted = function(trade) {
 
       if (nBal > oBal) { // profit!
         balanceChangeStr = `\n\nRound trip profit of ${getNumStr(diffBal)}${config.watch.currency}, ${getNumStr(percDiffBal,2)}%`
+        let subject = `${subject}, +${getNumStr(percDiffBal,2)}%`
       } else if (nBal < oBal) { //  Loss :(
         balanceChangeStr = `\n\nRound trip loss of -${getNumStr(diffBal)}${config.watch.currency}, -${getNumStr(percDiffBal,2)}%`
+        let subject = `${subject}, -${getNumStr(percDiffBal,2)}%`
       } else { // No change
         balanceChangeStr = `\n\nNo Change to Balance`
       }
@@ -202,14 +205,13 @@ Pushbullet.prototype.processTradeCompleted = function(trade) {
       exposureTimeStr,
       balanceChangeStr,
       totBalanceChangeStr,
-      '\n\nBalance: ', getNumStr(trade.balance), config.watch.currency,
+      '\nBalance: ', getNumStr(trade.balance), config.watch.currency,
     ].join('');
 
 
-    var subject = '';
-
 
     subject = pbConf.tag + ' ' + capF(trade.action) + ' complete ';
+
 
 
     this.mail(subject, text);
