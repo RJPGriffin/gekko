@@ -62,20 +62,21 @@ Pushbullet.prototype.setup = function(done) {
       var exchange = config.watch.exchange;
       var currency = config.watch.currency;
       var asset = config.watch.asset;
-      var body = "Gekko has started watching " +
-        asset +
-        "/" +
-        currency +
-        " on " +
-        exchange +
-        ".";
-
+      let tradeType = 'watching';
       if (config.trader.enabled) {
-        body += "\nLive Trading is enabled"
+        tradeType = "Live Trading";
       }
       if (config.paperTrader.enabled) {
-        body += "\nPaper Trading is enabled"
+        tradeType = "Paper Trading";
       }
+
+      var body = `Gekko has started ${tradeType} ${asset}/${currency} on ${exchange}.`;
+
+      //If trading Advisor is enabled, add strategy and candle size information
+      if (config.tradingAdvisor.enabled) {
+        body += `\n\nUsing ${config.tradingAdvisor.method} strategy on M${config.tradingAdvisor.candleSize} candles.`
+      }
+
       this.mail(title, body);
     } else {
       log.debug('Skipping Send message on startup')
@@ -139,36 +140,32 @@ Pushbullet.prototype.processTradeCompleted = function(trade) {
       exposureTimeStr = `\nExposure Time: ${moment.duration(trade.date.diff(this.lastBuyTime)).humanize()}`;
 
       //Calculate balance change
-      let oBal = this.lastBuyBalance;
-      let nBal = trade.balance;
-      let diffBal = Math.abs(nBal - oBal);
-      let percDiffBal = (diffBal / oBal) * 100;
+      let oBal = this.lastBuyBalance; // Old Balance
+      let nBal = trade.balance; // New Balance
+      let diffBal = Math.abs(nBal - oBal); // Balance Difference
+      let percDiffBal = (diffBal / oBal) * 100; // Percentage difference
 
 
-      if (nBal > oBal) { // profit!
-        balanceChangeStr = `\n\nRound trip profit of ${getNumStr(diffBal)}${config.watch.currency}, ${getNumStr(percDiffBal,2)}%`
+      if (nBal >= oBal) { // profit!
+        balanceChangeStr = `\n\nRound trip profit of: \n${getNumStr(diffBal)}${config.watch.currency} \n${getNumStr(percDiffBal,2)}%\n`
         subject = `${subject}: +${getNumStr(percDiffBal,2)}%`
       } else if (nBal < oBal) { //  Loss :(
-        balanceChangeStr = `\n\nRound trip loss of -${getNumStr(diffBal)}${config.watch.currency}, -${getNumStr(percDiffBal,2)}%`
+        balanceChangeStr = `\n\nRound trip loss of: \n-${getNumStr(diffBal)}${config.watch.currency} \n-${getNumStr(percDiffBal,2)}%\n`
         subject = `${subject}: -${getNumStr(percDiffBal,2)}%`
-      } else { // No change
-        balanceChangeStr = `\n\nNo Change to Balance`
       }
-
 
       //Calculate overall P/l
       let sBal = this.startingBalance;
       let tDiffBal = Math.abs(nBal - sBal);
       let percDiffTotBal = (tDiffBal / sBal) * 100;
-      if (nBal > sBal) { // profit!
-        totBalanceChangeStr = `\nOverall gain of ${getNumStr(tDiffBal)}${config.watch.currency}, ${getNumStr(percDiffTotBal,2)}%`
+      if (nBal >= sBal) { // profit!
+        totBalanceChangeStr = `\nOverall gain of: \n${getNumStr(tDiffBal)}${config.watch.currency} \n${getNumStr(percDiffTotBal,2)}%\n`
       } else if (nBal < sBal) { //  Loss :(
-        totBalanceChangeStr = `\nOverall loss of -${getNumStr(tDiffBal)}${config.watch.currency}, -${getNumStr(percDiffTotBal,2)}%`
-      } else { // No change
-        totBalanceChangeStr = `\nNo Change to Balance`
+        totBalanceChangeStr = `\nOverall loss of \n-${getNumStr(tDiffBal)}${config.watch.currency} \n-${getNumStr(percDiffTotBal,2)}%\n`
+
+      } else if (trade.action === 'sell' && !this.hasBought) {
+        balanceChangeStr = `\n\nNot enough data for exposure time, round trip or overall performance yet. This will appear after bot has completed first round trip.`
       }
-    } else if (trade.action === 'sell' && !this.hasBought) {
-      balanceChangeStr = `\n\nNot enough data for exposure time, round trip or overall performance yet. This will appear after bot has completed first round trip.`
     }
 
     let costOfTradeStr = `\nCost of Trade: ${getNumStr(trade.cost)}${config.watch.currency}, ${getNumStr((trade.cost / trade.amount) * 100, 2)}%`;
@@ -197,7 +194,7 @@ Pushbullet.prototype.processTradeCompleted = function(trade) {
 
     var text = [
       capF(config.watch.exchange), ' ', config.watch.asset, '/', config.watch.currency,
-      `\n\n${config.watch.asset} Trade Price: ${trade.price}`,
+      `\n\n${config.watch.asset} Trade Price: ${getNumStr(trade.price)}`,
       `\n${getPastTense(trade.action)} ${getNumStr(trade.amount)} ${config.watch.asset}`,
       orderFillTimeStr,
       slippageStr,
@@ -211,6 +208,7 @@ Pushbullet.prototype.processTradeCompleted = function(trade) {
     this.mail(subject, text);
   }
 };
+
 
 // A long winded function to make sure numbers aren't displayed with too many decimal places
 // and are a little humanized
