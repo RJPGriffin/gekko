@@ -168,7 +168,7 @@ Pushbullet.prototype.processTradeCompleted = function(trade) {
       }
     }
 
-    let costOfTradeStr = `\nCost of Trade: ${getNumStr(trade.cost)}${config.watch.currency}, ${getNumStr((trade.cost / trade.amount) * 100, 2)}%`;
+    let costOfTradeStr = `\nCost of Trade: ${getNumStr(trade.cost)}${config.watch.currency}, ${getNumStr(((trade.cost / (trade.amount*trade.price)) * 100), 2)}%`;
 
     //build strings that are only sent for Live trading, not paperTrader
     let orderFillTimeStr = '';
