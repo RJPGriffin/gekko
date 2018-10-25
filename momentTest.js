@@ -1,25 +1,12 @@
 const moment = require('moment');
 const request = require('request');
 
-let fPrice = 0;
-let fiat = "USD";
-let url = `https://min-api.cryptocompare.com/data/price?fsym=BTC&tsyms=USD`
-// request('http://www.google.com', function (error, response, body) {
-let retries = 3;
-// while (retries > 0) {
-request(url, function(error, res, body) {
-  if (res.statusCode === 200) {
-    body = JSON.parse(body);
-    fPrice = body[fiat];
-    retries = 0;
-    console.log(fPrice);
-  } else {
-    // retries--;
-    // if (!retries)
-    log.info(`Failed to get fiat value from cryptocompare after 3 attempts`);
-  }
-});
-// }
+let trade = {
+  "cost": 0.00001645,
+  "amount": 0.01645438
+}
+
+console.log(`Percentage: ${getNumStr((trade.cost / trade.amount) * 100,2)}%`);
 
 
 function capF(inWord) { //Capitalise first letter of string
@@ -48,7 +35,7 @@ function getNumStr(num, fixed = 3) {
     for (let i = 1; i < fixed; i++) {
       modNumMax = modNumMax + '0';
     }
-    console.log(modNumMax);
+    // console.log(modNumMax);
     modNumMax = Number(modNumMax);
 
     let i = 0;
