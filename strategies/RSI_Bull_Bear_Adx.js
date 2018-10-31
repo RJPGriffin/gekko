@@ -160,8 +160,14 @@ var strat = {
       if (adx > this.settings.ADX_high) rsi_hi = rsi_hi + this.BULL_MOD_high;
       else if (adx < this.settings.ADX_low) rsi_low = rsi_low + this.BULL_MOD_low;
 
-      if (rsi > rsi_hi) this.short();
-      else if (rsi < rsi_low) this.long();
+      if (rsi > rsi_hi) {
+        this.notify(`RSI: ${rsi}, Threshold at ${rsi_hi}, ADX Mod is ${adx > this.settings.ADX_high ? this.BULL_MOD_high :  "0"}`);
+        this.short();
+      } else if (rsi < rsi_low) {
+        this.notify(`RSI: ${rsi}, Threshold at ${rsi_low}, ADX Mod is ${adx < this.settings.ADX_low ? this.BULL_MOD_low :  "0"}`);
+        this.message(rsi, rsi_low);
+        this.long();
+      }
       if (this.debug) this.lowHigh(rsi, 'bull');
     }
 

@@ -49,6 +49,7 @@ var Pushbullet = function(done) {
   this.lastBuyTime = moment();
   this.lastBuyBalance = 0;
   this.hasBought = 0;
+  this.lastMessage = "";
 
   this.done = done;
   this.setup();
@@ -107,14 +108,31 @@ Pushbullet.prototype.processAdvice = function(advice) {
       '.\n\nThe current ',
       config.watch.asset,
       ' price is ',
-      this.advicePrice
+      this.advicePrice,
+      `\n`, this.lastMessage
     ].join('');
+
+    this.lastMessage = "";
 
     var subject = pbConf.tag + ' New advice: go ' + advice.recommendation;
 
     this.mail(subject, text);
   }
 };
+
+Pushbullet.prototype.processStratNotification = function(note) {
+
+  // If stratMessages is enabled in config, send it straight to pushbullet,
+  // else store it to be sent with next trade message
+
+  if (pbConf.stratMessages) {
+    var subject = `${pbConf.tag} New Strat Message`;
+    var body = note.content;
+    this.mail(subject, body);
+  } else {
+    this.lastMessage += `\n ${note.content}`;
+  }
+}
 
 Pushbullet.prototype.processTradeCompleted = function(trade) {
 

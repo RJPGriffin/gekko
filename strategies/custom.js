@@ -33,9 +33,11 @@ strat.log = function() {}
 strat.check = function() {
 
   if (this.toggle === 0) {
+    this.notify("Going Short")
     this.advice('short');
     this.toggle = 1;
   } else {
+    this.notify("Going Long")
     this.advice('long');
     this.toggle = 0;
   }

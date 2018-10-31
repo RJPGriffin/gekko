@@ -227,11 +227,11 @@ var strat = {
     // add adx low/high if debug
     if (this.debug) this.lowHigh(adx, 'adx');
 
-    fs.appendFile('CSVs/' + this.settings.Asset + ':' + this.settings.Currency + ' ' + this.startTime + '.csv', candle.close + "," + rsi + "," + this.trend.direction + "\n", function(err) {
-      if (err) {
-        return console.log(err);
-      }
-    });
+    // fs.appendFile('CSVs/' + this.settings.Asset + ':' + this.settings.Currency + ' ' + this.startTime + '.csv', candle.close + "," + rsi + "," + this.trend.direction + "\n", function(err) {
+    //   if (err) {
+    //     return console.log(err);
+    //   }
+    // });
 
   }, // check()
 
