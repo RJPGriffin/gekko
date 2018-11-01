@@ -165,7 +165,6 @@ var strat = {
         this.short();
       } else if (rsi < rsi_low) {
         this.notify(`RSI: ${rsi}, Threshold at ${rsi_low}, ADX Mod is ${adx < this.settings.ADX_low ? this.BULL_MOD_low :  "0"}`);
-        this.message(rsi, rsi_low);
         this.long();
       }
       if (this.debug) this.lowHigh(rsi, 'bull');
