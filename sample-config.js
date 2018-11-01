@@ -17,8 +17,8 @@ config.watch = {
 
   // see https://gekko.wizb.it/docs/introduction/supported_exchanges.html
   exchange: 'binance',
-  currency: 'USDT',
-  asset: 'BTC',
+  currency: 'BTC',
+  asset: 'FUEL',
 
   // You can set your own tickrate (refresh rate).
   // If you don't set it, the defaults are 2 sec for
