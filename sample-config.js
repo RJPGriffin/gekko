@@ -33,8 +33,8 @@ config.watch = {
 config.tradingAdvisor = {
   enabled: true,
   method: 'MACD',
-  candleSize: 60,
-  historySize: 10,
+  candleSize: 1,
+  historySize: 10000,
 }
 
 // MACD settings:

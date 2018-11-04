@@ -26,7 +26,7 @@ var strat = {
   /* INIT */
   init: function() {
     // core
-    this.name = 'RSI Bull and Bear + ADX';
+    this.name = 'RSI Bull and Bear + ADX M1';
     this.requiredHistory = config.tradingAdvisor.historySize;
     this.resetTrend();
 

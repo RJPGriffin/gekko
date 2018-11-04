@@ -1,7 +1,7 @@
-feeMaker = 0.25
-feeTaker = 0.25
+feeMaker = 0.1
+feeTaker = 0.1
 feeUsing = 'maker'
-slippage = 0.05
+slippage = 0.2
 
 [simulationBalance]
 asset = 1

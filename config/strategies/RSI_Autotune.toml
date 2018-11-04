@@ -3,7 +3,7 @@ SMA_short = 39
 
 interval = 14
 
-Threshold_Ema = 20;
+Threshold_Ema = 20
 
 
 historyLength = 24
