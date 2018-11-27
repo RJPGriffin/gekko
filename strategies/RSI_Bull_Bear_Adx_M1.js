@@ -1,5 +1,6 @@
 /*
-  Adapted to run on 1 Minute candes by Gryphon/RJPGriffin
+ Adapted to run on 1 Minute candles with candle batching
+ by Gryphon/RJPGriffin Nov'18
 
 	RSI Bull and Bear + ADX modifier
 	1. Use different RSI-strategies depending on a longer trend
