@@ -153,12 +153,12 @@ config.pushbullet = {
   enabled: false,
   // Send 'Gekko starting' message if true
   sendMessageOnStart: true,
-  // Send Message for advice?
+  // Send Message for advice? Recommend Flase for paper, true for live
   sendOnAdvice: true,
   // Send Message on Trade Completion?
   sendOnTrade: true,
-  // disable advice printout if it's soft
-  muteSoft: true,
+  // For Overall P/L calc. Pass in old balance if desired, else leave '0'
+  startingBalance: 0,
   // your pushbullet API key
   key: '',
   // your email
@@ -296,6 +296,12 @@ config.backtestResultExporter = {
     roundtrips: true,
     trades: true
   }
+}
+
+config.candleUploader = {
+  enabled: false,
+  url: '',
+  apiKey: ''
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

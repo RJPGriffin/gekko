@@ -207,6 +207,7 @@ Pushbullet.prototype.processTradeCompleted = function(trade) {
       }
       slippageStr = `\nSlipped ${getNumStr(slip,2)}% from advice @ ${getNumStr(this.advicePrice)}`;
 
+      let costOfTradeStr = `\nCost of Trade: ${getNumStr(trade.cost)}${config.watch.currency}, ${getNumStr(((trade.cost / (trade.amount*trade.price)) * 100), 2)}%`;
 
     }
 
@@ -223,8 +224,23 @@ Pushbullet.prototype.processTradeCompleted = function(trade) {
       '\nBalance: ', getNumStr(trade.balance), config.watch.currency,
     ].join('');
 
-    this.mail(subject, text);
   }
+
+  var text = [
+    capF(config.watch.exchange), ' ', config.watch.asset, '/', config.watch.currency,
+    `\n\n${config.watch.asset} Trade Price: ${getNumStr(trade.price)}`,
+    `\n${getPastTense(trade.action)} ${getNumStr(trade.amount)} ${config.watch.asset}`,
+    orderFillTimeStr,
+    slippageStr,
+    costOfTradeStr,
+    exposureTimeStr,
+    balanceChangeStr,
+    totBalanceChangeStr,
+    '\nBalance: ', getNumStr(trade.balance), config.watch.currency,
+  ].join('');
+
+  this.mail(subject, text);
+}
 };
 
 

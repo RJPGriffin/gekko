@@ -32,7 +32,7 @@ const PerformanceAnalyzer = function() {
   this.trades = 0;
 
   this.exposure = 0;
-  
+
   this.roundTrips = [];
   this.losses = [];
   this.roundTrip = {
@@ -46,12 +46,16 @@ const PerformanceAnalyzer = function() {
 
   this.start = {};
   this.openRoundTrip = false;
+
+  this.warmupCompleted = false;
 }
 
 PerformanceAnalyzer.prototype.processPortfolioValueChange = function(event) {
   if(!this.start.balance) {
     this.start.balance = event.balance;
   }
+
+  this.balance = event.balance;
 }
 
 PerformanceAnalyzer.prototype.processPortfolioChange = function(event) {
@@ -60,7 +64,17 @@ PerformanceAnalyzer.prototype.processPortfolioChange = function(event) {
   }
 }
 
+PerformanceAnalyzer.prototype.processStratWarmupCompleted = function() {
+  this.warmupCompleted = true;
+  this.processCandle(this.warmupCandle, _.noop);
+}
+
 PerformanceAnalyzer.prototype.processCandle = function(candle, done) {
+  if(!this.warmupCompleted) {
+    this.warmupCandle = candle;
+    return done();
+  }
+
   this.price = candle.close;
   this.dates.end = candle.start.clone().add(1, 'minute');
 
@@ -162,7 +176,7 @@ PerformanceAnalyzer.prototype.handleCompletedRoundtrip = function() {
   // track losses separately for downside report
   if (roundtrip.exitBalance < roundtrip.entryBalance)
     this.losses.push(roundtrip);
-  
+
 }
 
 PerformanceAnalyzer.prototype.calculateReportStatistics = function() {
@@ -180,15 +194,17 @@ PerformanceAnalyzer.prototype.calculateReportStatistics = function() {
   );
   const relativeProfit = this.balance / this.start.balance * 100 - 100;
   const relativeYearlyProfit = relativeProfit / timespan.asYears();
-  
+
   const percentExposure = this.exposure / (Date.parse(this.dates.end) - Date.parse(this.dates.start));
 
-  const sharpe = (relativeYearlyProfit - perfConfig.riskFreeReturn) 
-    / statslite.stdev(this.roundTrips.map(r => r.profit)) 
+  const sharpe = (relativeYearlyProfit - perfConfig.riskFreeReturn)
+    / statslite.stdev(this.roundTrips.map(r => r.profit))
     / Math.sqrt(this.trades / (this.trades - 2));
-  
+
   const downside = statslite.percentile(this.losses.map(r => r.profit), 0.25)
     * Math.sqrt(this.trades / (this.trades - 2));
+
+  const ratioRoundTrips = this.roundTrips.length > 0 ? (this.roundTrips.filter(roundTrip => roundTrip.pnl > 0 ).length / this.roundTrips.length * 100).toFixed(4) : 100;
 
   const report = {
     startTime: this.dates.start.utc().format('YYYY-MM-DD HH:mm:ss'),
@@ -209,10 +225,11 @@ PerformanceAnalyzer.prototype.calculateReportStatistics = function() {
     startBalance: this.start.balance,
     exposure: percentExposure,
     sharpe,
-    downside
+    downside,
+    ratioRoundTrips
   }
 
-  report.alpha = report.profit - report.market;
+  report.alpha = report.relativeProfit - report.market;
 
   return report;
 }
@@ -225,6 +242,7 @@ PerformanceAnalyzer.prototype.finalize = function(done) {
   const report = this.calculateReportStatistics();
   if(report) {
     this.logger.finalize(report);
+    this.emit('performanceReport', report);
   }
   done();
 }
