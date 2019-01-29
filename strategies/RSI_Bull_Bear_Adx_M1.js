@@ -1,4 +1,7 @@
 /*
+ Adapted to run on 1 Minute candles with candle batching
+ by Gryphon/RJPGriffin Nov'18
+
 	RSI Bull and Bear + ADX modifier
 	1. Use different RSI-strategies depending on a longer trend
 	2. But modify this slighly if shorter BULL/BEAR is detected
@@ -18,7 +21,7 @@ var config = require('../core/util.js').getConfig();
 var RSI = require('./indicators/RSI.js')
 var ADX = require('./indicators/ADX.js')
 var SMA = require('./indicators/SMA.js')
-const fs = require('fs');
+
 
 // strategy
 var strat = {
@@ -160,18 +163,11 @@ var strat = {
       tf.SMA_Count++;
     }
 
-    if (tf.BULL_RSI_Count >= tf.BULL_RSI - 1) {
-      tf.BULL_RSI_Count = 0;
-    } else {
-      tf.BULL_RSI_Count++;
-    }
+    tf.BULL_RSI_Count = (tf.BULL_RSI_Count + 1) % (tf.BULL_RSI - 1);
     this.BULL_RSI[tf.BULL_RSI_Count].update(candle);
 
-    if (tf.BEAR_RSI_Count >= tf.BEAR_RSI - 1) {
-      tf.BEAR_RSI_Count = 0;
-    } else {
-      tf.BEAR_RSI_Count++;
-    }
+
+    tf.BEAR_RSI_Count = (tf.BEAR_RSI_Count + 1) % (tf.BEAR_RSI - 1);
     this.BEAR_RSI[tf.BEAR_RSI_Count].update(candle);
 
     if (tf.ADX_Count >= tf.ADX) {
@@ -226,12 +222,6 @@ var strat = {
 
     // add adx low/high if debug
     if (this.debug) this.lowHigh(adx, 'adx');
-
-    // fs.appendFile('CSVs/' + this.settings.Asset + ':' + this.settings.Currency + ' ' + this.startTime + '.csv', candle.close + "," + rsi + "," + this.trend.direction + "\n", function(err) {
-    //   if (err) {
-    //     return console.log(err);
-    //   }
-    // });
 
   }, // check()
 
